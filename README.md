@@ -31,9 +31,11 @@ config entry, so the wardrobe, the `.cfg`, and Mod Nook can never disagree. The 
 headers are clones of the game's own customization widgets, so they carry the real selection
 frame, checkmark, hover sound and decorated titles rather than hand-drawn approximations.
 
-Known gap: the panel does not scroll yet, so the lower rows run past the panel edge. A clip mask
-blanked the whole panel twice, so scrolling is deferred to its own pass - see the design notes at
-the repo root ([17-wardrobe-ui.md](../../17-wardrobe-ui.md)).
+The panel scrolls: it feeds itself into the wardrobe screen's own `ScrollRect` (mouse wheel and
+drag) rather than building a clip mask, which blanked the whole panel twice. Known gap: keyboard
+(WASD) / gamepad navigation between swatches is not wired - the screen's hover-based selection model
+keeps nulling a keyboard cursor, so that was shelved. Mouse works fully. See the design notes at the
+repo root ([17-wardrobe-ui.md](../../17-wardrobe-ui.md)).
 
 ## Status
 
