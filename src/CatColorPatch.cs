@@ -37,7 +37,13 @@ namespace CatColorProbe
         // color. Regenerating by source luminance fixes both: the target's own channels are what
         // get scaled, and a source region's original brightness controls how strongly it takes
         // the new colour.
-        private static readonly string[] FurMaterialPrefixes = { "HellKitten01", "GradientAtlas" };
+        // Two materials share the fur mesh: HellKitten01 is the body surface, GradientAtlas is
+        // the whiskers. Keeping them separate is what lets WhiskerColor differ from FurColor.
+        // (The eyes use a GradientAtlas material too, but on their own renderer, handled
+        // separately by ApplyEyeColor - so the name is only ambiguous across renderers, not
+        // within this loop.)
+        private const string BodyMaterialPrefix = "HellKitten01";
+        private const string WhiskerMaterialPrefix = "GradientAtlas";
         private const string EyeRendererName = "HellKittenEyes";
 
         // HellKitten01 turned out to carry TWO albedo slots at once: _BaseMap/_BaseColor (URP/Lit's
@@ -140,9 +146,11 @@ namespace CatColorProbe
             }
 
             var furColor = CatColorProbePlugin.FurColor.Value;
+            var whiskerColor = CatColorProbePlugin.WhiskerColor.Value;
             var eyeColor = CatColorProbePlugin.EyeColor.Value;
             var auraColor = CatColorProbePlugin.AuraColor.Value;
             var furMatches = 0;
+            var whiskerMatches = 0;
             var eyeMatches = 0;
             var auraMatches = 0;
 
@@ -188,20 +196,31 @@ namespace CatColorProbe
                         continue;
                     }
 
-                    foreach (var prefix in FurMaterialPrefixes)
+                    // Body and whiskers are separate materials on this one mesh: HellKitten01 is
+                    // the body, GradientAtlas is the whiskers (vanilla is white whiskers on
+                    // black fur). Colouring them independently needs no pixel-level masking -
+                    // just route each material to its own config value. WhiskerColor blank falls
+                    // back to FurColor, which is the old always-matching behaviour.
+                    if (material.name.StartsWith(BodyMaterialPrefix))
                     {
-                        if (material.name.StartsWith(prefix))
-                        {
-                            furMatches++;
-                            ApplyFurColor(renderer, materialIndex, material, furColor);
-                            break;
-                        }
+                        furMatches++;
+                        ApplyFurColor(renderer, materialIndex, material, furColor);
+                    }
+                    else if (material.name.StartsWith(WhiskerMaterialPrefix))
+                    {
+                        whiskerMatches++;
+                        // Blank deliberately means "leave the whiskers untouched" rather than
+                        // "follow FurColor" - untouched restores the original texture, which is
+                        // vanilla's white, so the default look is right without hardcoding a
+                        // colour or dragging the fur's colour onto them.
+                        ApplyFurColor(renderer, materialIndex, material, whiskerColor);
                     }
                 }
             }
 
             Debug($"ApplyCatColors on '{bodyView.gameObject.name}': FurColor='{furColor}' matched " +
-                  $"{furMatches} material(s), EyeColor='{eyeColor}' matched {eyeMatches} renderer(s), " +
+                  $"{furMatches} material(s), WhiskerColor='{whiskerColor}' matched {whiskerMatches} material(s), " +
+                  $"EyeColor='{eyeColor}' matched {eyeMatches} renderer(s), " +
                   $"AuraColor='{auraColor}' matched {auraMatches} renderer(s), includeEyes={includeEyes}.");
         }
 
@@ -489,29 +508,23 @@ namespace CatColorProbe
                 }
 
                 var threshold = CatColorProbePlugin.EyeHighlightThreshold.Value;
-                Color? pupilColor = null;
-                var pupilHex = CatColorProbePlugin.PupilColor.Value;
-                if (!string.IsNullOrWhiteSpace(pupilHex))
-                {
-                    if (TryParseColor(pupilHex, out var parsedPupilColor))
-                    {
-                        pupilColor = parsedPupilColor;
-                    }
-                    else
-                    {
-                        CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] PupilColor '{pupilHex}' is not a valid colour.");
-                    }
-                }
+                var highlightColor = ParseOptionalColor(CatColorProbePlugin.EyeHighlightColor.Value, "EyeHighlightColor");
+                var pupilColor = ParseOptionalColor(CatColorProbePlugin.PupilColor.Value, "PupilColor");
+                var pupilValueSplit = CatColorProbePlugin.EyePupilValue.Value;
 
                 // Eyes get their own floor, not the fur's: the fur needs a high floor to escape
                 // its near-black texture, while the eyes need a low one so the dark parts of the
                 // eye stay dark. Sharing one value pushed the black pupils to full brightness.
                 var floor = CatColorProbePlugin.EyeBrightnessFloor.Value;
-                var recolored = TextureRecolor.GetOrBuild(OriginalEyeAtlases[material], hex, color, threshold, pupilColor, floor);
+                var recolored = TextureRecolor.GetOrBuild(
+                    OriginalEyeAtlases[material], hex, color, threshold, highlightColor, floor,
+                    pupilValueSplit, pupilColor);
                 material.SetTexture("_Atlas", recolored);
                 WriteToPropertyBlock(renderer, materialIndex, "_Atlas", recolored, null, null);
-                Debug($"Eyes: regenerated '{material.name}' _Atlas toward {color} (parsed from '{hex}'), " +
-                      $"pixels >= {threshold} luminance -> {(pupilColor.HasValue ? pupilColor.Value.ToString() : "left untouched")}.");
+                Debug($"Eyes: regenerated '{material.name}' _Atlas toward {color} (parsed from '{hex}'); " +
+                      $"desaturated below {threshold} splits at value {pupilValueSplit} into pupil=" +
+                      $"{(pupilColor.HasValue ? pupilColor.Value.ToString() : "untouched")} / highlight=" +
+                      $"{(highlightColor.HasValue ? highlightColor.Value.ToString() : "untouched")}.");
             }
         }
 
@@ -570,6 +583,26 @@ namespace CatColorProbe
                     Debug($"Aura: set '{material.name}' {property} to {recolored} (hue/sat from '{hex}', original brightness kept).");
                 }
             }
+        }
+
+        /// <summary>
+        /// Blank means "leave this region alone" (null), an unparseable value warns once and is
+        /// also treated as leave-alone rather than silently colouring something wrong.
+        /// </summary>
+        private static Color? ParseOptionalColor(string hex, string settingName)
+        {
+            if (string.IsNullOrWhiteSpace(hex))
+            {
+                return null;
+            }
+
+            if (TryParseColor(hex, out var parsed))
+            {
+                return parsed;
+            }
+
+            CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] {settingName} '{hex}' is not a valid colour.");
+            return null;
         }
 
         private static bool TryParseColor(string value, out Color color)

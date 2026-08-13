@@ -27,8 +27,9 @@ namespace CatColorProbe
     /// </summary>
     internal static class TextureRecolor
     {
-        private static readonly Dictionary<(Texture Source, string Hex, float Threshold, Color? Highlight, float Floor), Texture2D> Cache =
-            new Dictionary<(Texture, string, float, Color?, float), Texture2D>();
+        private static readonly Dictionary<(Texture Source, string Hex, float Threshold, Color? Highlight, float Floor,
+            float PupilSplit, Color? Pupil), Texture2D> Cache =
+            new Dictionary<(Texture, string, float, Color?, float, float, Color?), Texture2D>();
 
         /// <param name="splitBelowSaturation">
         /// Source pixels whose HSV saturation is at or below this are treated as the separate
@@ -49,10 +50,21 @@ namespace CatColorProbe
         /// black fur".
         /// </param>
         /// <param name="highlightColor">
-        /// What the highlight region (see protectAboveLuminance) is remapped toward, using the
-        /// same luminance-multiply as everywhere else. Null leaves it as the original pixel,
-        /// unrecoloured - the "protect the pupil" behaviour. A caller that wants an explicitly
-        /// colourable pupil passes a colour here instead.
+        /// What the desaturated-and-BRIGHT region is remapped toward - the eye's white highlight
+        /// glint. Null leaves those pixels exactly as they were.
+        /// </param>
+        /// <param name="splitBelowValue">
+        /// Within the desaturated region (see splitBelowSaturation), pixels at or below this HSV
+        /// value are the actual pupil rather than the highlight. Saturation alone cannot tell
+        /// these apart: a white highlight and a black pupil are both fully desaturated, so they
+        /// land in the same bucket and can only be separated by brightness. That is also why the
+        /// real pupil got recoloured by accident when the brightness floor was raised - it was
+        /// being treated as part of the same region as the highlight. Pass a negative value to
+        /// disable the pupil split, leaving the whole desaturated region as highlight.
+        /// </param>
+        /// <param name="pupilColor">
+        /// What the desaturated-and-DARK region (the actual pupil) is remapped toward. Null
+        /// leaves those pixels exactly as they were, which is the vanilla black pupil.
         /// </param>
         /// <param name="brightnessFloor">
         /// Source value (the V in HSV, i.e. brightness) is remapped from [0, 1] to
@@ -67,21 +79,23 @@ namespace CatColorProbe
         /// </param>
         internal static Texture2D GetOrBuild(
             Texture source, string hex, Color target, float splitBelowSaturation = -1f, Color? highlightColor = null,
-            float brightnessFloor = 0f)
+            float brightnessFloor = 0f, float splitBelowValue = -1f, Color? pupilColor = null)
         {
-            var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor);
+            var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor, splitBelowValue, pupilColor);
             if (Cache.TryGetValue(key, out var cached) && cached != null)
             {
                 return cached;
             }
 
-            var result = Build(source, target, hex, splitBelowSaturation, highlightColor, brightnessFloor);
+            var result = Build(source, target, hex, splitBelowSaturation, highlightColor, brightnessFloor,
+                splitBelowValue, pupilColor);
             Cache[key] = result;
             return result;
         }
 
         private static Texture2D Build(
-            Texture source, Color target, string cacheKey, float splitBelowSaturation, Color? highlightColor, float brightnessFloor)
+            Texture source, Color target, string cacheKey, float splitBelowSaturation, Color? highlightColor,
+            float brightnessFloor, float splitBelowValue, Color? pupilColor)
         {
             var width = source.width;
             var height = source.height;
@@ -97,6 +111,15 @@ namespace CatColorProbe
                 Color.RGBToHSV(hc, out highlightH, out highlightS, out highlightV);
             }
 
+            var havePupil = pupilColor is Color;
+            var pupilH = 0f;
+            var pupilS = 0f;
+            var pupilV = 0f;
+            if (pupilColor is Color pc)
+            {
+                Color.RGBToHSV(pc, out pupilH, out pupilS, out pupilV);
+            }
+
             var outPixels = new Color[sourcePixels.Length];
             for (var i = 0; i < sourcePixels.Length; i++)
             {
@@ -106,7 +129,27 @@ namespace CatColorProbe
 
                 if (sourceS <= splitBelowSaturation)
                 {
-                    if (haveHighlight)
+                    // Desaturated: either the white highlight or the black pupil. Both are fully
+                    // desaturated, so only brightness can tell them apart.
+                    var isPupil = sourceV <= splitBelowValue;
+                    if (isPupil)
+                    {
+                        if (havePupil)
+                        {
+                            // The pupil is near-black, so its own value can't scale a colour into
+                            // visibility - use the picked colour's value directly instead of
+                            // multiplying by shade, or a black pupil would stay black whatever
+                            // colour was chosen.
+                            var recolouredPupil = Color.HSVToRGB(pupilH, pupilS, pupilV);
+                            recolouredPupil.a = src.a;
+                            outPixels[i] = recolouredPupil;
+                        }
+                        else
+                        {
+                            outPixels[i] = src;
+                        }
+                    }
+                    else if (haveHighlight)
                     {
                         var recoloredHighlight = Color.HSVToRGB(highlightH, highlightS, highlightV * shade);
                         recoloredHighlight.a = src.a;

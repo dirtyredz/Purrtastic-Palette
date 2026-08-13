@@ -27,9 +27,12 @@ namespace CatColorProbe
         internal static ConfigEntry<bool> ForceTestColor;
         internal static ConfigEntry<KeyboardShortcut> GiveFormsKey;
         internal static ConfigEntry<string> FurColor;
+        internal static ConfigEntry<string> WhiskerColor;
         internal static ConfigEntry<string> EyeColor;
         internal static ConfigEntry<float> EyeHighlightThreshold;
+        internal static ConfigEntry<string> EyeHighlightColor;
         internal static ConfigEntry<string> PupilColor;
+        internal static ConfigEntry<float> EyePupilValue;
         internal static ConfigEntry<float> RecolorBrightnessFloor;
         internal static ConfigEntry<float> EyeBrightnessFloor;
         internal static ConfigEntry<string> AuraColor;
@@ -62,6 +65,17 @@ namespace CatColorProbe
                     null,
                     ColorsSection, "ModMenu.Label=Fur Color"));
 
+            WhiskerColor = Config.Bind(
+                "Colors", "WhiskerColor", "",
+                new ConfigDescription(
+                    "Cat Form whisker colour - hex code or HTML colour name. Blank = leave the " +
+                    "whiskers at their vanilla colour (white), NOT matching FurColor. The " +
+                    "whiskers are a separate material from the body (GradientAtlas vs " +
+                    "HellKitten01) on the same mesh, so they can be coloured independently " +
+                    "without any pixel-level masking.",
+                    null,
+                    ColorsSection, "ModMenu.Label=Whisker Color"));
+
             EyeColor = Config.Bind(
                 "Colors", "EyeColor", "",
                 new ConfigDescription(
@@ -74,7 +88,7 @@ namespace CatColorProbe
                     ColorsSection, "ModMenu.Label=Eye Color"));
 
             EyeHighlightThreshold = Config.Bind(
-                "Colors", "EyePupilSaturation", 0.25f,
+                "Colors", "EyePupilSaturation", 0.7f,
                 new ConfigDescription(
                     "Source eye-atlas pixels with LESS colour saturation than this (0-1) are " +
                     "treated as the pupil and take PupilColor; everything more saturated takes " +
@@ -83,19 +97,45 @@ namespace CatColorProbe
                     "top-to-bottom WITHIN a strip while saturation stays constant - splitting on " +
                     "brightness sliced the eye into a top half and bottom half instead of " +
                     "separating iris from pupil. Raise this if too little counts as pupil; lower " +
-                    "it if too much does. 0 disables the split entirely (whole eye takes EyeColor).",
+                    "it if too much does. 0 disables the split entirely (whole eye takes " +
+                    "EyeColor). The 0.7 default was found by testing - the eye's pupil and " +
+                    "highlight are less saturated than the iris but not close to pure grey, so a " +
+                    "low threshold missed them entirely.",
                     new AcceptableValueRange<float>(0f, 1f),
                     ColorsSection, "ModMenu.Label=Eye Pupil Saturation"));
+
+            EyeHighlightColor = Config.Bind(
+                "Colors", "EyeHighlightColor", "",
+                new ConfigDescription(
+                    "Colour for the eye's bright highlight glint - hex code or HTML colour name. " +
+                    "Blank = leave it at its original colour. This was previously (and wrongly) " +
+                    "called PupilColor; it is the small bright catchlight, not the pupil. Only " +
+                    "has any effect while EyeColor is also set.",
+                    null,
+                    ColorsSection, "ModMenu.Label=Eye Highlight Color"));
 
             PupilColor = Config.Bind(
                 "Colors", "PupilColor", "",
                 new ConfigDescription(
-                    "Colour for the bright highlight region EyeHighlightThreshold protects " +
-                    "(effectively the pupil) - hex code or HTML colour name. Blank = leave it " +
-                    "as its original colour (unrecoloured, not forced white). Only has any " +
-                    "effect while EyeColor is also set.",
+                    "Colour for the actual pupil (the dark centre) - hex code or HTML colour " +
+                    "name. Blank = leave it vanilla black. The pupil and the highlight are both " +
+                    "fully desaturated, so saturation alone cannot separate them - they are told " +
+                    "apart by brightness via EyePupilValue. Because the pupil is near-black, the " +
+                    "colour set here is applied at its own full brightness rather than being " +
+                    "scaled by the pupil's original darkness, which would leave it black no " +
+                    "matter what was picked. Only has any effect while EyeColor is also set.",
                     null,
                     ColorsSection, "ModMenu.Label=Pupil Color"));
+
+            EyePupilValue = Config.Bind(
+                "Colors", "EyePupilValue", 0.35f,
+                new ConfigDescription(
+                    "Within the desaturated part of the eye, pixels darker than this (0-1) are " +
+                    "the pupil; brighter ones are the highlight. Raise it if part of the pupil " +
+                    "is still being treated as highlight; lower it if the highlight is bleeding " +
+                    "into the pupil.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    ColorsSection, "ModMenu.Label=Eye Pupil Value Split"));
 
             FurGlow = Config.Bind(
                 "Colors", "FurGlow", 0f,
