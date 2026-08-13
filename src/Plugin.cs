@@ -7,12 +7,16 @@ using UnityEngine;
 namespace CatColorProbe
 {
     /// <summary>
-    /// Started as a throwaway diagnostic (does the Cat/Bat/Aqua form body carry a usable
-    /// <c>Color</c> shader property, or is its colour baked into a texture?) and grew a real
-    /// feature once the answer turned out to be "yes for fur, sort of for eyes": config-driven
-    /// recoloring of Cat Form, applied by <see cref="CatColorPatch"/> every time the form's body
-    /// becomes visible. No in-game picker here - Mod Nook already renders BepInEx config entries
-    /// as a menu, so plain <c>ConfigEntry&lt;string&gt;</c> hex fields are the UI for now.
+    /// Recolours Cat Form - fur, whiskers, iris, pupil, eye highlight and the movement trail -
+    /// from config, applied by <see cref="CatColorPatch"/> whenever the form's body becomes
+    /// visible. No in-game picker: Mod Nook already renders BepInEx config entries as a menu, so
+    /// plain <c>ConfigEntry&lt;string&gt;</c> hex fields are the UI.
+    ///
+    /// Started life as a throwaway diagnostic answering "is the form body's colour a shader
+    /// property or baked into a texture?", which is where the name and the F7 probe come from.
+    /// The probe is kept because it is how every finding here was made and how the next one will
+    /// be. See mods/CatColorProbe/README.md for the findings and
+    /// 16-recolouring-characters.md at the repo root for the parts that generalise to other mods.
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInProcess("Moonlight Peaks.exe")]
@@ -51,95 +55,74 @@ namespace CatColorProbe
             FurColor = Config.Bind(
                 "Colors", "FurColor", "",
                 new ConfigDescription(
-                    "Cat Form fur colour. Accepts a hex code (\"#FF8800\") or an HTML colour " +
-                    "name (\"orange\"). Blank = leave the default fur colour alone. Works by " +
-                    "regenerating the fur's albedo texture, which is near-black by design, so " +
-                    "the colour is applied at full brightness - the body still looks shaded and " +
-                    "rounded because that shading comes from real-time lighting and the normal " +
-                    "map rather than from the texture.",
+                    "Colour for the cat's body. Use a hex code (\"#FF8800\") or a colour name " +
+                    "(\"orange\"). Leave blank to keep the default black.",
                     null,
                     ColorsSection, "ModMenu.Label=Fur Color"));
 
             WhiskerColor = Config.Bind(
                 "Colors", "WhiskerColor", "",
                 new ConfigDescription(
-                    "Cat Form whisker colour - hex code or HTML colour name. Blank = leave the " +
-                    "whiskers at their vanilla colour (white), NOT matching FurColor. The " +
-                    "whiskers are a separate material from the body (GradientAtlas vs " +
-                    "HellKitten01) on the same mesh, so they can be coloured independently " +
-                    "without any pixel-level masking.",
+                    "Colour for the whiskers. Leave blank to keep them the default white - they " +
+                    "do not follow Fur Color.",
                     null,
                     ColorsSection, "ModMenu.Label=Whisker Color"));
 
             EyeColor = Config.Bind(
                 "Colors", "EyeColor", "",
                 new ConfigDescription(
-                    "Cat Form eye colour. Accepts a hex code or an HTML colour name. Blank = " +
-                    "leave the default eye colour alone. This colours the iris only - the pupil " +
-                    "and the bright highlight are detected separately and have their own " +
-                    "settings (PupilColor and EyeHighlightColor).",
+                    "Colour for the iris - the coloured ring of the eye. Leave blank to keep the " +
+                    "default red. The pupil and the bright glint have their own settings below.",
                     null,
                     ColorsSection, "ModMenu.Label=Eye Color"));
-
-
-            EyeHighlightColor = Config.Bind(
-                "Colors", "EyeHighlightColor", "",
-                new ConfigDescription(
-                    "Colour for the eye's bright highlight glint - hex code or HTML colour name. " +
-                    "Blank = leave it at its original colour. This was previously (and wrongly) " +
-                    "called PupilColor; it is the small bright catchlight, not the pupil. Only " +
-                    "has any effect while EyeColor is also set.",
-                    null,
-                    ColorsSection, "ModMenu.Label=Eye Highlight Color"));
 
             PupilColor = Config.Bind(
                 "Colors", "PupilColor", "",
                 new ConfigDescription(
-                    "Colour for the actual pupil (the dark centre) - hex code or HTML colour " +
-                    "name. Blank = leave it vanilla black. Because the pupil is near-black, the " +
-                    "colour set here is applied at its own full brightness rather than being " +
-                    "scaled by the pupil's original darkness, which would leave it black no " +
-                    "matter what was picked. Only has any effect while EyeColor is also set.",
+                    "Colour for the pupil - the dark centre of the eye. Leave blank to keep the " +
+                    "default black. Needs Eye Color set to have any effect.",
                     null,
                     ColorsSection, "ModMenu.Label=Pupil Color"));
 
+            EyeHighlightColor = Config.Bind(
+                "Colors", "EyeHighlightColor", "",
+                new ConfigDescription(
+                    "Colour for the small bright glint on the eye. Leave blank to keep the " +
+                    "default white. Needs Eye Color set to have any effect.",
+                    null,
+                    ColorsSection, "ModMenu.Label=Eye Highlight Color"));
 
             AuraColor = Config.Bind(
                 "Colors", "AuraColor", "",
                 new ConfigDescription(
-                    "Colour for Cat Form's glow VFX (the Aura sparkle particles and the Trail " +
-                    "whisker-glow effect) - hex code or HTML colour name. Blank = leave the " +
-                    "default glow colour alone. The fur's own diffuse texture turned out to be " +
-                    "almost pure black everywhere (confirmed by exporting it - this creature is " +
-                    "a shadow silhouette by design), so these VFX, not the fur texture, are most " +
-                    "likely what actually reads as the character's colour on screen. Preserves " +
-                    "each property's own HDR brightness - only the hue/saturation change.",
+                    "Colour for the sparkle trail that follows the cat while running. Leave " +
+                    "blank to keep the default. Only visible while moving.",
                     null,
                     ColorsSection, "ModMenu.Label=Aura Color"));
 
             ColorsVerboseLogging = Config.Bind(
-                "Colors", "VerboseLogging", true,
+                "Colors", "VerboseLogging", false,
                 new ConfigDescription(
-                    "Log every fur/eye colour apply and restore to LogOutput.log - which " +
-                    "materials were found, what was parsed, what got set. On by default while " +
-                    "this feature is still being shaken out.",
+                    "Write details of every colour change to the BepInEx log. Only useful when " +
+                    "reporting a problem.",
                     null,
                     ColorsSection, "ModMenu.Label=Verbose Logging"));
 
             ProbeKey = Config.Bind(
                 "Probe", "ProbeKey", new KeyboardShortcut(KeyCode.F7),
                 new ConfigDescription(
-                    "While a form (Cat/Bat/Aqua) is equipped, press this to dump the form " +
-                    "body's renderer materials and every shader property to LogOutput.log.",
+                    "Developer tool. While in a form, dumps that body's renderers, materials and " +
+                    "shader properties to the BepInEx log, and saves its textures to " +
+                    "BepInEx/config/CatColorProbe/textures.",
                     null,
                     ProbeSection, "ModMenu.Label=Probe Key"));
 
             ForceTestColor = Config.Bind(
-                "Probe", "ForceTestColor", true,
+                "Probe", "ForceTestColor", false,
                 new ConfigDescription(
-                    "If true, every Color-typed shader property found by the probe is forced " +
-                    "to neon magenta so the override is visually obvious. If false, the probe " +
-                    "only logs what it finds.",
+                    "Developer tool. Makes the probe key also force every colour property it " +
+                    "finds to bright magenta, so you can see on screen which ones actually do " +
+                    "something. Leaves the form looking wrong until you re-equip it.",
                     null,
                     ProbeSection, "ModMenu.Label=Force Test Color"));
 
@@ -152,8 +135,9 @@ namespace CatColorProbe
             GiveFormsKey = Config.Bind(
                 "Debug", "GiveFormsKey", new KeyboardShortcut(KeyCode.Home),
                 new ConfigDescription(
-                    "Grants Cat/Bat/Aqua form ownership (even if not unlocked on this save) " +
-                    "and equips Cat Form. Debug aid, not a real unlock.",
+                    "Developer tool. Gives you Cat, Bat and Aqua form on a save that has not " +
+                    "unlocked them, and switches to Cat Form. For testing colours without " +
+                    "playing to the unlock.",
                     null,
                     DebugSection, "ModMenu.Label=Give Forms Key"));
 
@@ -168,10 +152,8 @@ namespace CatColorProbe
             harmony = new Harmony(PluginGuid);
             harmony.PatchAll(typeof(CatColorPatch));
 
-            Log.LogInfo($"{PluginName} {PluginVersion} loaded. Set Colors/FurColor and " +
-                        "Colors/EyeColor (Mod Nook or the .cfg) to recolor Cat Form. " +
-                        $"Diagnostics: {ProbeKey.Value} probes the current body, " +
-                        $"{GiveFormsKey.Value} grants all three forms and equips Cat Form.");
+            Log.LogInfo($"{PluginName} {PluginVersion} loaded. Set the Colors settings in Mod " +
+                        "Nook (or the .cfg) to recolour Cat Form; changes apply immediately.");
         }
 
         private void OnDestroy()
