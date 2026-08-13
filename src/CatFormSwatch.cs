@@ -20,7 +20,6 @@ namespace CatColorProbe
     /// </summary>
     internal sealed class CatFormSwatch : MonoBehaviour
     {
-        private static bool searched;
         private static GameObject template;
 
         private static readonly AccessTools.FieldRef<CustomizationOptionListWidget, ColorSegmentView> ColorSegmentRef =
@@ -52,12 +51,15 @@ namespace CatColorProbe
 
         private static GameObject FindTemplate()
         {
-            if (searched)
+            // Unity's == null is true for a destroyed object, so this re-searches after the screen
+            // that owned the previous template is torn down. Caching by a one-time bool instead
+            // handed back a destroyed reference on the second visit - the clone then failed and the
+            // panel silently regressed to the drawn fallback.
+            if (template != null)
             {
                 return template;
             }
 
-            searched = true;
             try
             {
                 // CustomizationOptionListWidget renders two ways from one class: a square with an

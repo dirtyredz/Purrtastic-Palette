@@ -47,7 +47,7 @@ namespace CatColorProbe
             ("Pink", "#FF7AC6"),
         };
 
-        private const float SwatchSize = 92f;
+        private const float SwatchSize = 90f;
 
         private static GameObject root;
         private static Transform lastParent;
@@ -82,14 +82,14 @@ namespace CatColorProbe
                 // rows laid out directly, fully visible even if the bottom rows run past the panel.
                 // Scrolling is a separate problem to solve without a clipping mask in the way.
                 var layout = root.AddComponent<VerticalLayoutGroup>();
-                layout.spacing = 16f;
+                layout.spacing = 28f;
                 // childControlHeight true so each row's explicit LayoutElement height is honoured;
                 // false makes them collapse onto each other.
                 layout.childControlHeight = true;
                 layout.childControlWidth = true;
                 layout.childForceExpandHeight = false;
                 layout.childForceExpandWidth = true;
-                layout.padding = new RectOffset(8, 8, 8, 8);
+                layout.padding = new RectOffset(8, 8, 40, 8); // extra top padding above the first header
 
                 foreach (var (label, setting, defaultColor) in Rows)
                 {
@@ -127,19 +127,23 @@ namespace CatColorProbe
         private static float AddRow(Transform parent, string label, ConfigEntry<string> setting, Color defaultColor)
         {
             const int columns = 5;
-            const float spacing = 14f;
+            const float spacing = 20f;
             const float labelHeight = 40f;
+            // Extra height reserved at the bottom of each row so the selection frame (the bat
+            // wings) and the checkmark of the last swatch row - which extend past the swatch cell -
+            // don't collide with the next row's header.
+            const float frameOverflow = 24f;
 
             var swatchCount = 1 + Presets.Length + 1; // default + presets + custom
             var gridRows = Mathf.CeilToInt(swatchCount / (float)columns);
             var gridHeight = gridRows * SwatchSize + (gridRows - 1) * spacing;
-            var rowHeight = labelHeight + 6f + gridHeight;
+            var rowHeight = labelHeight + 56f + gridHeight + frameOverflow; // 56f = header-to-grid gap
 
             var row = new GameObject($"Row_{label}", typeof(RectTransform));
             row.transform.SetParent(parent, false);
 
             var rowLayout = row.AddComponent<VerticalLayoutGroup>();
-            rowLayout.spacing = 6f;
+            rowLayout.spacing = 56f;
             // Same reason as the root group: true so the label and grid stack by their own
             // heights instead of overlapping.
             rowLayout.childControlHeight = true;
@@ -159,6 +163,8 @@ namespace CatColorProbe
             gridLayout.spacing = new Vector2(spacing, spacing);
             gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             gridLayout.constraintCount = columns;
+            // Centre the block of swatches in the (full-width) row rather than left-packing it.
+            gridLayout.childAlignment = TextAnchor.UpperCenter;
 
             var gridElement = grid.AddComponent<LayoutElement>();
             gridElement.preferredHeight = gridHeight;
@@ -179,6 +185,17 @@ namespace CatColorProbe
 
         private static void AddLabel(Transform parent, string text, float height)
         {
+            // Prefer the game's decorated header (swirl flourishes + rule); fall back to a plain
+            // left-aligned label if the template cannot be found.
+            var decorated = HeaderDecoration.Create(parent, text);
+            if (decorated != null)
+            {
+                var headerElement = decorated.GetComponent<LayoutElement>() ?? decorated.AddComponent<LayoutElement>();
+                headerElement.preferredHeight = height;
+                headerElement.minHeight = height;
+                return;
+            }
+
             var host = new GameObject("Label", typeof(RectTransform));
             host.transform.SetParent(parent, false);
 

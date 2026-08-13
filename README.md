@@ -1,10 +1,13 @@
 # Cat Color Probe
 
-Recolours Cat Form: body, whiskers, iris, pupil, eye highlight, and the sparkle trail.
+Recolours Cat Form: body, whiskers, iris, pupil, eye highlight, and the sparkle trail. Two ways
+to set the colours - config values, and a **Cat Form tab in the mirror's wardrobe** with a live
+preview and swatch pickers.
 
-Settings live under **Colors** in Mod Nook (or `BepInEx/config/com.dirtyredz.moonlightpeaks.catcolorprobe.cfg`).
-Every value is a hex code (`#FF8800`) or an HTML colour name (`orange`); blank means "leave
-vanilla". Changes apply immediately — no re-equip, no restart.
+Config settings live under **Colors** in Mod Nook (or
+`BepInEx/config/com.dirtyredz.moonlightpeaks.catcolorprobe.cfg`). Every value is a hex code
+(`#FF8800`) or an HTML colour name (`orange`); blank means "leave vanilla". Changes apply
+immediately — no re-equip, no restart.
 
 | Setting | Colours | Vanilla |
 |---|---|---|
@@ -18,11 +21,26 @@ vanilla". Changes apply immediately — no re-equip, no restart.
 `WhiskerColor` deliberately does **not** follow `FurColor` — blank leaves the whiskers vanilla
 white rather than matching the body.
 
+## The wardrobe tab (phase 2)
+
+Interact with the mirror the game places in the player's house, choose "Change clothes", and a
+**Cat Form** tab appears at the end of the tab strip. Selecting it shows the cat in the preview
+(the same rig the character creator uses) with a swatch panel - one row per colourable part,
+preset colours plus a "+" tile that opens an RGB picker. Picking a swatch writes straight to the
+config entry, so the wardrobe, the `.cfg`, and Mod Nook can never disagree. The swatches and row
+headers are clones of the game's own customization widgets, so they carry the real selection
+frame, checkmark, hover sound and decorated titles rather than hand-drawn approximations.
+
+Known gap: the panel does not scroll yet, so the lower rows run past the panel edge. A clip mask
+blanked the whole panel twice, so scrolling is deferred to its own pass - see the design notes at
+the repo root ([17-wardrobe-ui.md](../../17-wardrobe-ui.md)).
+
 ## Status
 
-Working and confirmed in-game for all six colours. Not published. Still named `CatColorProbe`
-after the diagnostic it started as; a rename means changing the plugin GUID and the config path,
-so it should happen before any release, not after.
+Working and confirmed in-game: all six colours, and the wardrobe tab (preview, swatches, picker,
+decorated headers, stable across leaving and re-entering the mirror). Not published. Still named
+`CatColorProbe` after the diagnostic it started as; a rename means changing the plugin GUID and
+the config path, so it should happen before any release, not after.
 
 ## How it works
 
