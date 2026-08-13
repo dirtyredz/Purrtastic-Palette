@@ -34,6 +34,43 @@
       <Private>false</Private>
     </Reference>
 
+    <!-- UI stack, needed for the wardrobe colour panel and the RGB picker. Same set
+         mods/TrueColors uses for the equivalent UI. -->
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(MoonlightPeaksManagedPath)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(MoonlightPeaksManagedPath)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(MoonlightPeaksManagedPath)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(MoonlightPeaksManagedPath)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(MoonlightPeaksManagedPath)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- ParticleSystem, to hide the cat's glow VFX in the wardrobe preview. -->
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(MoonlightPeaksManagedPath)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Volume/Bloom, to suppress the post-processing bloom that smears the preview. -->
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>$(MoonlightPeaksManagedPath)\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+      <HintPath>$(MoonlightPeaksManagedPath)\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
     <Reference Include="Unity.Collections">
       <HintPath>$(MoonlightPeaksManagedPath)\Unity.Collections.dll</HintPath>
       <Private>false</Private>
@@ -45,6 +82,12 @@
     </Reference>
     <Reference Include="LittleChickenGameCompany.Chicken-Utilities.Runtime">
       <HintPath>$(MoonlightPeaksManagedPath)\LittleChickenGameCompany.Chicken-Utilities.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- UIScreen/ListWidget/MenuWidget base types - needed once the mod started touching the
+         wardrobe screen's own widgets, not just materials. -->
+    <Reference Include="LittleChickenGameCompany.Chicken-UI.Runtime">
+      <HintPath>$(MoonlightPeaksManagedPath)\LittleChickenGameCompany.Chicken-UI.Runtime.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

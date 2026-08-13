@@ -151,6 +151,7 @@ namespace CatColorProbe
 
             harmony = new Harmony(PluginGuid);
             harmony.PatchAll(typeof(CatColorPatch));
+            harmony.PatchAll(typeof(CatFormWardrobe));
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded. Set the Colors settings in Mod " +
                         "Nook (or the .cfg) to recolour Cat Form; changes apply immediately.");

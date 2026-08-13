@@ -168,6 +168,24 @@ namespace CatColorProbe
                 return;
             }
 
+            ApplyToBody(bodyView, logVerbose, includeEyes);
+        }
+
+        /// <summary>
+        /// Recolours any Cat Form body, not just the live player's. The wardrobe preview
+        /// instantiates its own copy of the body prefab, which is a different object with its own
+        /// material instances - so it needs applying to explicitly or it renders vanilla black
+        /// while the real player is correctly coloured.
+        /// </summary>
+        internal static void ApplyToBody(BodyViewAsset bodyView, bool logVerbose = true, bool includeEyes = true)
+        {
+            if (bodyView == null)
+            {
+                return;
+            }
+
+            suppressLogging = !logVerbose;
+
             var furColor = CatColorProbePlugin.FurColor.Value;
             var whiskerColor = CatColorProbePlugin.WhiskerColor.Value;
             var eyeColor = CatColorProbePlugin.EyeColor.Value;
