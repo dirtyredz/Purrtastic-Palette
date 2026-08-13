@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Trimmed adaptation of mods/ModNook/src/ColorPicker.cs: same dialog shape (dim overlay,
@@ -31,7 +31,7 @@ namespace CatColorProbe
         {
             CloseAny();
 
-            var host = new GameObject("CatColorProbe_ColorPicker", typeof(RectTransform));
+            var host = new GameObject("PurrtasticPalette_ColorPicker", typeof(RectTransform));
             host.transform.SetParent(parent, false);
             host.transform.SetAsLastSibling();
 
@@ -62,7 +62,7 @@ namespace CatColorProbe
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Colour picker '{name}' failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Colour picker '{name}' failed: {e}");
             }
         }
 
@@ -153,8 +153,8 @@ namespace CatColorProbe
             var template = Templates.Slider;
             if (template == null)
             {
-                CatColorProbePlugin.Log.LogWarning(
-                    "[CatColorProbe] No SliderButton template found - colour picker has no sliders.");
+                PurrtasticPalettePlugin.Log.LogWarning(
+                    "[PurrtasticPalette] No SliderButton template found - colour picker has no sliders.");
                 return;
             }
 

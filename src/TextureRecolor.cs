@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// HSV colorize: for each source pixel, take the TARGET colour's hue and saturation but keep
@@ -170,7 +170,7 @@ namespace CatColorProbe
 
             var result = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: false)
             {
-                name = $"CatColorProbe_Recolor_{cacheKey}",
+                name = $"PurrtasticPalette_Recolor_{cacheKey}",
                 wrapMode = source.wrapMode,
                 filterMode = source.filterMode,
             };

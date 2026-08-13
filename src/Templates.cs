@@ -11,7 +11,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Sources the game's own settings widgets so anything built from these reads correctly at
@@ -59,18 +59,18 @@ namespace CatColorProbe
 
                 if (template == null)
                 {
-                    CatColorProbePlugin.Log.LogWarning($"No {label} found.");
+                    PurrtasticPalettePlugin.Log.LogWarning($"No {label} found.");
                 }
                 else
                 {
-                    CatColorProbePlugin.Log.LogInfo($"{label} template: {PathOf(template.transform)}");
+                    PurrtasticPalettePlugin.Log.LogInfo($"{label} template: {PathOf(template.transform)}");
                 }
 
                 return template;
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogWarning($"{label} lookup failed: {e.Message}");
+                PurrtasticPalettePlugin.Log.LogWarning($"{label} lookup failed: {e.Message}");
                 return null;
             }
         }
@@ -107,7 +107,7 @@ namespace CatColorProbe
             {
                 if (staging == null)
                 {
-                    var host = new GameObject("CatColorProbe_Staging");
+                    var host = new GameObject("PurrtasticPalette_Staging");
                     host.SetActive(false);
                     UnityEngine.Object.DontDestroyOnLoad(host);
                     staging = host.transform;
@@ -180,7 +180,7 @@ namespace CatColorProbe
                 }
                 catch (Exception e)
                 {
-                    CatColorProbePlugin.Log.LogError($"'{label}' failed: {e}");
+                    PurrtasticPalettePlugin.Log.LogError($"'{label}' failed: {e}");
                 }
             });
 
@@ -319,7 +319,7 @@ namespace CatColorProbe
                 return;
             }
 
-            CatColorProbePlugin.Log.LogWarning(
+            PurrtasticPalettePlugin.Log.LogWarning(
                 $"No label text found on {widget.GetType().Name}; it will keep the template's own.");
         }
 

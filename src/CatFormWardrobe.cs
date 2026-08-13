@@ -5,7 +5,7 @@ using Chicken.Utilities;
 using HarmonyLib;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Phase 2, step 1: put a "Cat Form" tab in the mirror's wardrobe screen and show the cat in
@@ -55,12 +55,12 @@ namespace CatColorProbe
 
         private static ConfigEntry<string>[] ManagedColors() => new[]
         {
-            CatColorProbePlugin.FurColor,
-            CatColorProbePlugin.WhiskerColor,
-            CatColorProbePlugin.EyeColor,
-            CatColorProbePlugin.PupilColor,
-            CatColorProbePlugin.EyeHighlightColor,
-            CatColorProbePlugin.AuraColor,
+            PurrtasticPalettePlugin.FurColor,
+            PurrtasticPalettePlugin.WhiskerColor,
+            PurrtasticPalettePlugin.EyeColor,
+            PurrtasticPalettePlugin.PupilColor,
+            PurrtasticPalettePlugin.EyeHighlightColor,
+            PurrtasticPalettePlugin.AuraColor,
         };
 
         [HarmonyPostfix]
@@ -72,7 +72,7 @@ namespace CatColorProbe
                 var bumperMenu = BumperMenuRef(__instance);
                 if (bumperMenu == null)
                 {
-                    CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Wardrobe: no bumperMenuWidget found - cannot add the Cat Form tab.");
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no bumperMenuWidget found - cannot add the Cat Form tab.");
                     return;
                 }
 
@@ -97,11 +97,11 @@ namespace CatColorProbe
                 customizationsConfirmed = false;
                 __instance.OnCustomizationsConfirmed.AddListener(HandleCustomizationsConfirmed);
 
-                CatColorProbePlugin.Log.LogInfo("[CatColorProbe] Wardrobe: added the Cat Form tab.");
+                PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: added the Cat Form tab.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: failed to add the Cat Form tab: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: failed to add the Cat Form tab: {e}");
             }
         }
 
@@ -111,21 +111,21 @@ namespace CatColorProbe
             {
                 if (!MonoBehaviourSingleton<CharacterCustomizer>.Exists)
                 {
-                    CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Wardrobe: no CharacterCustomizer - cannot reach the preview.");
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no CharacterCustomizer - cannot reach the preview.");
                     return;
                 }
 
                 var preview = MonoBehaviourSingleton<CharacterCustomizer>.Instance.CharacterPreview;
                 if (preview == null)
                 {
-                    CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Wardrobe: CharacterPreview is null.");
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: CharacterPreview is null.");
                     return;
                 }
 
                 var humanBody = PreviewBodyRef(preview);
                 if (humanBody == null)
                 {
-                    CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Wardrobe: the preview has no body view to replace.");
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: the preview has no body view to replace.");
                     return;
                 }
 
@@ -135,8 +135,8 @@ namespace CatColorProbe
                         .FirstOrDefault(x => x != null && x.name.IndexOf(CatBodyViewNameFragment, StringComparison.OrdinalIgnoreCase) >= 0);
                     if (catBodyAsset == null)
                     {
-                        CatColorProbePlugin.Log.LogWarning(
-                            $"[CatColorProbe] Wardrobe: no BodyViewAsset matching '{CatBodyViewNameFragment}' found.");
+                        PurrtasticPalettePlugin.Log.LogWarning(
+                            $"[PurrtasticPalette] Wardrobe: no BodyViewAsset matching '{CatBodyViewNameFragment}' found.");
                         return;
                     }
 
@@ -147,8 +147,8 @@ namespace CatColorProbe
                     catBodyInstance.transform.localPosition = humanBody.transform.localPosition;
                     catBodyInstance.transform.localRotation = humanBody.transform.localRotation;
                     catBodyInstance.transform.localScale = humanBody.transform.localScale;
-                    CatColorProbePlugin.Log.LogInfo(
-                        $"[CatColorProbe] Wardrobe: instantiated '{catBodyAsset.name}' into the preview under " +
+                    PurrtasticPalettePlugin.Log.LogInfo(
+                        $"[PurrtasticPalette] Wardrobe: instantiated '{catBodyAsset.name}' into the preview under " +
                         $"'{humanBody.transform.parent?.name}'.");
                 }
 
@@ -166,13 +166,13 @@ namespace CatColorProbe
                 BuildColorPanel();
 
                 var renderers = catBodyInstance.GetComponentsInChildren<Renderer>(true).Length;
-                CatColorProbePlugin.Log.LogInfo(
-                    $"[CatColorProbe] Wardrobe: showing the cat body in the preview " +
+                PurrtasticPalettePlugin.Log.LogInfo(
+                    $"[PurrtasticPalette] Wardrobe: showing the cat body in the preview " +
                     $"({renderers} renderer(s), scale {catBodyInstance.transform.lossyScale}).");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: failed to show the cat in the preview: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: failed to show the cat in the preview: {e}");
             }
         }
 
@@ -203,7 +203,7 @@ namespace CatColorProbe
                 hidden++;
             }
 
-            CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] Wardrobe: hid {hidden} VFX object(s) in the preview.");
+            PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] Wardrobe: hid {hidden} VFX object(s) in the preview.");
         }
 
         /// <summary>
@@ -292,7 +292,7 @@ namespace CatColorProbe
             var parent = categoryList != null ? categoryList.transform.parent : null;
             if (parent == null)
             {
-                CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Wardrobe: no panel parent - cannot build the colour panel.");
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no panel parent - cannot build the colour panel.");
                 return;
             }
 
@@ -340,11 +340,11 @@ namespace CatColorProbe
                     humanBody.gameObject.SetActive(true);
                 }
 
-                CatColorProbePlugin.Log.LogInfo("[CatColorProbe] Wardrobe: restored the human body for a vanilla tab.");
+                PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: restored the human body for a vanilla tab.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: failed to restore the human body: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: failed to restore the human body: {e}");
             }
         }
 
@@ -397,13 +397,13 @@ namespace CatColorProbe
 
                 if (reverted > 0)
                 {
-                    CatColorProbePlugin.Log.LogInfo(
-                        $"[CatColorProbe] Wardrobe: reverted {reverted} colour(s) - closed without confirming.");
+                    PurrtasticPalettePlugin.Log.LogInfo(
+                        $"[PurrtasticPalette] Wardrobe: reverted {reverted} colour(s) - closed without confirming.");
                 }
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: colour revert failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: colour revert failed: {e}");
             }
             finally
             {

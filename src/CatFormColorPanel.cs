@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// The Cat Form tab's own panel: a scrollable row of colour swatches per part.
@@ -25,11 +25,11 @@ namespace CatColorProbe
         /// </summary>
         private static readonly (string Label, Func<ConfigEntry<string>> Setting, Color DefaultColor)[] Rows =
         {
-            ("Fur", () => CatColorProbePlugin.FurColor, new Color32(0x14, 0x10, 0x18, 0xFF)),
-            ("Whiskers", () => CatColorProbePlugin.WhiskerColor, new Color32(0xF2, 0xEC, 0xFF, 0xFF)),
-            ("Eyes", () => CatColorProbePlugin.EyeColor, new Color32(0xFF, 0x43, 0x39, 0xFF)),
-            ("Pupil", () => CatColorProbePlugin.PupilColor, new Color32(0x14, 0x10, 0x18, 0xFF)),
-            ("Eye Highlight", () => CatColorProbePlugin.EyeHighlightColor, new Color32(0xF2, 0xEC, 0xFF, 0xFF)),
+            ("Fur", () => PurrtasticPalettePlugin.FurColor, new Color32(0x14, 0x10, 0x18, 0xFF)),
+            ("Whiskers", () => PurrtasticPalettePlugin.WhiskerColor, new Color32(0xF2, 0xEC, 0xFF, 0xFF)),
+            ("Eyes", () => PurrtasticPalettePlugin.EyeColor, new Color32(0xFF, 0x43, 0x39, 0xFF)),
+            ("Pupil", () => PurrtasticPalettePlugin.PupilColor, new Color32(0x14, 0x10, 0x18, 0xFF)),
+            ("Eye Highlight", () => PurrtasticPalettePlugin.EyeHighlightColor, new Color32(0xF2, 0xEC, 0xFF, 0xFF)),
         };
 
         private static readonly (string Label, string Hex)[] Presets =
@@ -68,7 +68,7 @@ namespace CatColorProbe
                 Swatches.Clear();
                 ClonedSwatches.Clear();
 
-                root = new GameObject("CatColorProbe_ColorPanel", typeof(RectTransform));
+                root = new GameObject("PurrtasticPalette_ColorPanel", typeof(RectTransform));
                 root.transform.SetParent(parent, false);
 
                 var layout = root.AddComponent<VerticalLayoutGroup>();
@@ -127,15 +127,15 @@ namespace CatColorProbe
                 }
 
                 var rect = rootRect.rect;
-                CatColorProbePlugin.Log.LogInfo(
-                    $"[CatColorProbe] Wardrobe: colour panel built - parent '{parent.name}', " +
+                PurrtasticPalettePlugin.Log.LogInfo(
+                    $"[PurrtasticPalette] Wardrobe: colour panel built - parent '{parent.name}', " +
                     $"panel rect {rect.width:F0}x{rect.height:F0}, target height {totalHeight:F0}, " +
                     $"{root.transform.childCount} row(s), {Swatches.Count} swatch(es), " +
                     $"activeInHierarchy={root.activeInHierarchy}.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: failed to build the colour panel: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: failed to build the colour panel: {e}");
             }
         }
 

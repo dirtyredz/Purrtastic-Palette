@@ -2,7 +2,7 @@
 // Fix bugs in both copies.
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Generates the rounded, gold-edged plate the mods in this repo use for their own panels.
@@ -31,7 +31,7 @@ namespace CatColorProbe
             {
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp,
-                name = "CatColorProbe_Panel"
+                name = "PurrtasticPalette_Panel"
             };
 
             var pixels = new Color[Size * Size];
@@ -59,7 +59,7 @@ namespace CatColorProbe
             cached = Sprite.Create(
                 texture, new Rect(0f, 0f, Size, Size), new Vector2(0.5f, 0.5f), 100f, 0,
                 SpriteMeshType.FullRect, border);
-            cached.name = "CatColorProbe_Panel";
+            cached.name = "PurrtasticPalette_Panel";
             return cached;
         }
 
@@ -83,7 +83,7 @@ namespace CatColorProbe
             {
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp,
-                name = "CatColorProbe_Plain"
+                name = "PurrtasticPalette_Plain"
             };
 
             var pixels = new Color[Size * Size];
@@ -108,7 +108,7 @@ namespace CatColorProbe
             plain = Sprite.Create(
                 texture, new Rect(0f, 0f, Size, Size), new Vector2(0.5f, 0.5f), 100f, 0,
                 SpriteMeshType.FullRect, border);
-            plain.name = "CatColorProbe_Plain";
+            plain.name = "PurrtasticPalette_Plain";
             return plain;
         }
 

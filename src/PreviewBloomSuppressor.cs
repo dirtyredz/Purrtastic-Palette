@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Turns post-processing bloom off while the Cat Form tab is open, and back on when it isn't.
@@ -33,7 +33,7 @@ namespace CatColorProbe
 
             try
             {
-                host = new GameObject("CatColorProbe_BloomSuppressor");
+                host = new GameObject("PurrtasticPalette_BloomSuppressor");
                 UnityEngine.Object.DontDestroyOnLoad(host);
 
                 var volume = host.AddComponent<Volume>();
@@ -42,7 +42,7 @@ namespace CatColorProbe
                 volume.weight = 1f;
 
                 var profile = ScriptableObject.CreateInstance<VolumeProfile>();
-                profile.name = "CatColorProbe_NoBloom";
+                profile.name = "PurrtasticPalette_NoBloom";
                 volume.profile = profile;
 
                 var bloom = profile.Add<Bloom>(overrides: true);
@@ -50,11 +50,11 @@ namespace CatColorProbe
                 bloom.intensity.overrideState = true;
                 bloom.intensity.value = 0f;
 
-                CatColorProbePlugin.Log.LogInfo("[CatColorProbe] Wardrobe: bloom suppressed for the preview.");
+                PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: bloom suppressed for the preview.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: failed to suppress bloom: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: failed to suppress bloom: {e}");
                 Restore();
             }
         }
@@ -68,7 +68,7 @@ namespace CatColorProbe
 
             UnityEngine.Object.Destroy(host);
             host = null;
-            CatColorProbePlugin.Log.LogInfo("[CatColorProbe] Wardrobe: bloom restored.");
+            PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: bloom restored.");
         }
     }
 }

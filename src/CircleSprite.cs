@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// A plain white circle, generated once and tinted per swatch. The vanilla customization
@@ -23,7 +23,7 @@ namespace CatColorProbe
 
             var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, mipChain: false)
             {
-                name = "CatColorProbe_Circle",
+                name = "PurrtasticPalette_Circle",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear,
             };

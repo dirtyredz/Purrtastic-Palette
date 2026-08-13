@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// A flat cream-gold paw print, generated once for the Cat Form wardrobe tab. The game's own
@@ -30,7 +30,7 @@ namespace CatColorProbe
 
             var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, mipChain: false)
             {
-                name = "CatColorProbe_Paw",
+                name = "PurrtasticPalette_Paw",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear,
             };

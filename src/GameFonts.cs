@@ -4,7 +4,7 @@ using System;
 using TMPro;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Locates the game's own typeface so mod text does not stand out as foreign.
@@ -110,13 +110,13 @@ namespace CatColorProbe
                     }
                 }
 
-                CatColorProbePlugin.Log.LogInfo(
+                PurrtasticPalettePlugin.Log.LogInfo(
                     $"Game font: {(font == null ? "not found, using TMP default" : font.name)}; " +
                     $"outline preset: {(outlineMaterial == null ? "none" : outlineMaterial.name)}");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogWarning($"Font lookup failed, falling back to TMP default: {e.Message}");
+                PurrtasticPalettePlugin.Log.LogWarning($"Font lookup failed, falling back to TMP default: {e.Message}");
             }
         }
     }

@@ -8,7 +8,7 @@ using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     internal sealed class ProbeController : MonoBehaviour
     {
@@ -45,12 +45,12 @@ namespace CatColorProbe
         // not a re-run of the pixel regeneration.
         private void Update()
         {
-            if (CatColorProbePlugin.ProbeKey.Value.IsDown())
+            if (PurrtasticPalettePlugin.ProbeKey.Value.IsDown())
             {
                 Probe();
             }
 
-            if (CatColorProbePlugin.GiveFormsKey.Value.IsDown())
+            if (PurrtasticPalettePlugin.GiveFormsKey.Value.IsDown())
             {
                 GiveForms();
             }
@@ -64,14 +64,14 @@ namespace CatColorProbe
         {
             if (!MonoBehaviourSingleton<PlayerView>.Exists)
             {
-                CatColorProbePlugin.Log.LogWarning("[CatColorProbe] No PlayerView yet - is a save loaded?");
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] No PlayerView yet - is a save loaded?");
                 return;
             }
 
             var bodyView = MonoBehaviourSingleton<PlayerView>.Instance.Customization.BodyView;
             if (bodyView == null)
             {
-                CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Customization.BodyView is null.");
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Customization.BodyView is null.");
                 return;
             }
 
@@ -80,8 +80,8 @@ namespace CatColorProbe
             // of trusting that one field, so nothing under the body is missed - including whatever
             // renderer carries the eyes.
             var renderers = bodyView.GetComponentsInChildren<Renderer>(true);
-            CatColorProbePlugin.Log.LogInfo(
-                $"[CatColorProbe] Current body: '{bodyView.gameObject.name}', {renderers.Length} renderer(s).");
+            PurrtasticPalettePlugin.Log.LogInfo(
+                $"[PurrtasticPalette] Current body: '{bodyView.gameObject.name}', {renderers.Length} renderer(s).");
 
             foreach (var renderer in renderers)
             {
@@ -95,8 +95,8 @@ namespace CatColorProbe
                 // writes customization through MaterialPropertyBlocks, and a block overrides the
                 // material's own values at draw time - so a renderer reporting True here is one
                 // where editing the Material alone can never show up on screen.
-                CatColorProbePlugin.Log.LogInfo(
-                    $"[CatColorProbe] Renderer '{path}' ({renderer.GetType().Name}), {materials.Length} material(s), " +
+                PurrtasticPalettePlugin.Log.LogInfo(
+                    $"[PurrtasticPalette] Renderer '{path}' ({renderer.GetType().Name}), {materials.Length} material(s), " +
                     $"HasPropertyBlock={renderer.HasPropertyBlock()}.");
 
                 for (var i = 0; i < materials.Length; i++)
@@ -117,7 +117,7 @@ namespace CatColorProbe
                     }
                     catch (Exception e)
                     {
-                        CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] Eye UV dump failed (non-fatal): {e.Message}");
+                        PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] Eye UV dump failed (non-fatal): {e.Message}");
                     }
                 }
             }
@@ -140,13 +140,13 @@ namespace CatColorProbe
             var mesh = skinnedRenderer != null ? skinnedRenderer.sharedMesh : null;
             if (mesh == null)
             {
-                CatColorProbePlugin.Log.LogWarning(
-                    $"[CatColorProbe] '{renderer.gameObject.name}' has no readable sharedMesh for UV dump.");
+                PurrtasticPalettePlugin.Log.LogWarning(
+                    $"[PurrtasticPalette] '{renderer.gameObject.name}' has no readable sharedMesh for UV dump.");
                 return;
             }
 
-            CatColorProbePlugin.Log.LogInfo(
-                $"[CatColorProbe] Eye mesh '{mesh.name}': isReadable={mesh.isReadable} vertexCount={mesh.vertexCount}");
+            PurrtasticPalettePlugin.Log.LogInfo(
+                $"[PurrtasticPalette] Eye mesh '{mesh.name}': isReadable={mesh.isReadable} vertexCount={mesh.vertexCount}");
 
             // mesh.uv / mesh.vertices come back empty for this mesh (confirmed) - it doesn't
             // have "Read/Write Enabled", so the plain C# array accessors have nothing to return.
@@ -159,7 +159,7 @@ namespace CatColorProbe
             {
                 if (dataArray.Length == 0)
                 {
-                    CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] Mesh '{mesh.name}' - AcquireReadOnlyMeshData returned no data.");
+                    PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] Mesh '{mesh.name}' - AcquireReadOnlyMeshData returned no data.");
                     return;
                 }
 
@@ -167,7 +167,7 @@ namespace CatColorProbe
                 var vertexCount = data.vertexCount;
                 if (vertexCount == 0)
                 {
-                    CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] Mesh '{mesh.name}' reports 0 vertices via AcquireReadOnlyMeshData.");
+                    PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] Mesh '{mesh.name}' reports 0 vertices via AcquireReadOnlyMeshData.");
                     return;
                 }
 
@@ -181,8 +181,8 @@ namespace CatColorProbe
 
             if (uvs.Length == 0 || positions.Length != uvs.Length)
             {
-                CatColorProbePlugin.Log.LogWarning(
-                    $"[CatColorProbe] Mesh '{mesh.name}' has no usable UV0 data ({uvs.Length} uvs, {positions.Length} verts).");
+                PurrtasticPalettePlugin.Log.LogWarning(
+                    $"[PurrtasticPalette] Mesh '{mesh.name}' has no usable UV0 data ({uvs.Length} uvs, {positions.Length} verts).");
                 return;
             }
 
@@ -221,7 +221,7 @@ namespace CatColorProbe
         {
             if (uvs.Count == 0)
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe]   UV cluster '{label}': 0 verts, skipped.");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette]   UV cluster '{label}': 0 verts, skipped.");
                 return;
             }
 
@@ -244,8 +244,8 @@ namespace CatColorProbe
             var pixelYTop = Mathf.RoundToInt((1f - maxV) * atlasSize);
             var pixelYBottom = Mathf.RoundToInt((1f - minV) * atlasSize);
 
-            CatColorProbePlugin.Log.LogInfo(
-                $"[CatColorProbe]   UV cluster '{label}': {uvs.Count} verts, UV U[{minU:F4},{maxU:F4}] V[{minV:F4},{maxV:F4}] " +
+            PurrtasticPalettePlugin.Log.LogInfo(
+                $"[PurrtasticPalette]   UV cluster '{label}': {uvs.Count} verts, UV U[{minU:F4},{maxU:F4}] V[{minV:F4},{maxV:F4}] " +
                 $"-> atlas PNG pixels X[{pixelXMin},{pixelXMax}] Y[{pixelYTop},{pixelYBottom}] (Y measured from top of the image).");
         }
 
@@ -270,8 +270,8 @@ namespace CatColorProbe
             var property = MaskColorPropertyField?.GetValue(block) as string;
             var color = MaskColorColorField != null ? (Color)MaskColorColorField.GetValue(block) : default;
 
-            CatColorProbePlugin.Log.LogInfo(
-                $"[CatColorProbe]   MaskColorPropertyBlock found: property='{property}' color={color}");
+            PurrtasticPalettePlugin.Log.LogInfo(
+                $"[PurrtasticPalette]   MaskColorPropertyBlock found: property='{property}' color={color}");
         }
 
         private static string GetPath(Transform t, Transform root)
@@ -307,7 +307,7 @@ namespace CatColorProbe
         {
             if (!MonoBehaviourSingleton<GameInventory>.Exists)
             {
-                CatColorProbePlugin.Log.LogWarning("[CatColorProbe] No GameInventory yet - is a save loaded?");
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] No GameInventory yet - is a save loaded?");
                 return;
             }
 
@@ -338,13 +338,13 @@ namespace CatColorProbe
 
             if (catItem == null)
             {
-                CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Could not find the Cat Form item asset - not equipping.");
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Could not find the Cat Form item asset - not equipping.");
                 return;
             }
 
             if (inventory.TryGrabItem(catItem))
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] Equipped '{catItem.AssetName}'.");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] Equipped '{catItem.AssetName}'.");
                 if (MonoBehaviourSingleton<PlayerView>.Exists)
                 {
                     MonoBehaviourSingleton<PlayerView>.Instance.Shouter.Shout("Forms granted (debug)");
@@ -352,8 +352,8 @@ namespace CatColorProbe
             }
             else
             {
-                CatColorProbePlugin.Log.LogWarning(
-                    $"[CatColorProbe] TryGrabItem failed for '{catItem.AssetName}' - already grabbed, or not in a valid position to enter Cat Form.");
+                PurrtasticPalettePlugin.Log.LogWarning(
+                    $"[PurrtasticPalette] TryGrabItem failed for '{catItem.AssetName}' - already grabbed, or not in a valid position to enter Cat Form.");
             }
         }
 
@@ -361,17 +361,17 @@ namespace CatColorProbe
         {
             if (item == null)
             {
-                CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] Could not find the {label} Form item asset.");
+                PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] Could not find the {label} Form item asset.");
                 return;
             }
 
             if (inventory.AddItem(new ItemEntry(item)))
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] Granted '{item.AssetName}' ({label} Form).");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] Granted '{item.AssetName}' ({label} Form).");
             }
             else
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] '{item.AssetName}' ({label} Form) already owned, or could not be added.");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] '{item.AssetName}' ({label} Form) already owned, or could not be added.");
             }
         }
 
@@ -387,7 +387,7 @@ namespace CatColorProbe
         /// the mesh instead of just recoloring it.
         /// </summary>
         /// <summary>
-        /// Saves _BaseMap/_MainTex/_Atlas to PNG under BepInEx/config/CatColorProbe/textures/, so
+        /// Saves _BaseMap/_MainTex/_Atlas to PNG under BepInEx/config/PurrtasticPalette/textures/, so
         /// the actual eye-atlas and fur-texture layout can be looked at directly instead of
         /// inferred from luminance thresholds. Uses the same RenderTexture-blit read path as
         /// TextureRecolor, so it works whether or not the source asset has "Read/Write Enabled".
@@ -427,17 +427,17 @@ namespace CatColorProbe
                 readable.SetPixels(pixels);
                 readable.Apply();
 
-                var dir = Path.Combine(Paths.ConfigPath, "CatColorProbe", "textures");
+                var dir = Path.Combine(Paths.ConfigPath, "PurrtasticPalette", "textures");
                 Directory.CreateDirectory(dir);
                 var path = Path.Combine(dir, $"{exportKey}.png");
                 File.WriteAllBytes(path, readable.EncodeToPNG());
                 Destroy(readable);
 
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] Exported {propertyName} '{original.name}' -> {path}");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] Exported {propertyName} '{original.name}' -> {path}");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] Failed to export {propertyName} '{original.name}': {e}");
+                PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] Failed to export {propertyName} '{original.name}': {e}");
             }
         }
 
@@ -445,15 +445,15 @@ namespace CatColorProbe
         {
             if (material == null)
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe]   [{index}] Material=null");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette]   [{index}] Material=null");
                 return;
             }
 
             var shader = material.shader;
             var count = shader.GetPropertyCount();
 
-            CatColorProbePlugin.Log.LogInfo(
-                $"[CatColorProbe]   [{index}] material='{material.name}' shader='{shader.name}' ({count} shader properties)");
+            PurrtasticPalettePlugin.Log.LogInfo(
+                $"[PurrtasticPalette]   [{index}] material='{material.name}' shader='{shader.name}' ({count} shader properties)");
 
             for (var i = 0; i < count; i++)
             {
@@ -465,38 +465,38 @@ namespace CatColorProbe
                     case ShaderPropertyType.Color:
                     {
                         var before = material.GetColor(propName);
-                        if (CatColorProbePlugin.ForceTestColor.Value)
+                        if (PurrtasticPalettePlugin.ForceTestColor.Value)
                         {
-                            material.SetColor(propName, CatColorProbePlugin.TestColor);
-                            CatColorProbePlugin.Log.LogInfo(
-                                $"[CatColorProbe]     [Color] {propName}: {before} -> forced to {CatColorProbePlugin.TestColor}");
+                            material.SetColor(propName, PurrtasticPalettePlugin.TestColor);
+                            PurrtasticPalettePlugin.Log.LogInfo(
+                                $"[PurrtasticPalette]     [Color] {propName}: {before} -> forced to {PurrtasticPalettePlugin.TestColor}");
                         }
                         else
                         {
-                            CatColorProbePlugin.Log.LogInfo($"[CatColorProbe]     [Color] {propName}: {before}");
+                            PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette]     [Color] {propName}: {before}");
                         }
 
                         break;
                     }
                     case ShaderPropertyType.Vector:
-                        CatColorProbePlugin.Log.LogInfo(
-                            $"[CatColorProbe]     [Vector] {propName}: {material.GetVector(propName)}");
+                        PurrtasticPalettePlugin.Log.LogInfo(
+                            $"[PurrtasticPalette]     [Vector] {propName}: {material.GetVector(propName)}");
                         break;
                     case ShaderPropertyType.Float:
                     case ShaderPropertyType.Range:
-                        CatColorProbePlugin.Log.LogInfo(
-                            $"[CatColorProbe]     [Float] {propName}: {material.GetFloat(propName)}");
+                        PurrtasticPalettePlugin.Log.LogInfo(
+                            $"[PurrtasticPalette]     [Float] {propName}: {material.GetFloat(propName)}");
                         break;
                     case ShaderPropertyType.Texture:
                     {
                         var tex = material.GetTexture(propName);
-                        CatColorProbePlugin.Log.LogInfo(
-                            $"[CatColorProbe]     [Texture] {propName}: {(tex != null ? tex.name : "null")}");
+                        PurrtasticPalettePlugin.Log.LogInfo(
+                            $"[PurrtasticPalette]     [Texture] {propName}: {(tex != null ? tex.name : "null")}");
                         ExportTextureIfInteresting(material, propName, tex);
                         break;
                     }
                     default:
-                        CatColorProbePlugin.Log.LogInfo($"[CatColorProbe]     [{propType}] {propName}: (not read)");
+                        PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette]     [{propType}] {propName}: (not read)");
                         break;
                 }
             }

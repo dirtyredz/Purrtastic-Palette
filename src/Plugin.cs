@@ -4,7 +4,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Recolours Cat Form - fur, whiskers, iris, pupil, eye highlight and the movement trail -
@@ -15,15 +15,15 @@ namespace CatColorProbe
     /// Started life as a throwaway diagnostic answering "is the form body's colour a shader
     /// property or baked into a texture?", which is where the name and the F7 probe come from.
     /// The probe is kept because it is how every finding here was made and how the next one will
-    /// be. See mods/CatColorProbe/README.md for the findings and
+    /// be. See mods/PurrtasticPalette/README.md for the findings and
     /// 16-recolouring-characters.md at the repo root for the parts that generalise to other mods.
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInProcess("Moonlight Peaks.exe")]
-    public sealed class CatColorProbePlugin : BaseUnityPlugin
+    public sealed class PurrtasticPalettePlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "com.dirtyredz.moonlightpeaks.catcolorprobe";
-        public const string PluginName = "Cat Color Probe";
+        public const string PluginGuid = "com.dirtyredz.moonlightpeaks.purrtasticpalette";
+        public const string PluginName = "Purrtastic Palette";
         public const string PluginVersion = "0.1.0";
 
         internal static ManualLogSource Log;
@@ -113,7 +113,7 @@ namespace CatColorProbe
                 new ConfigDescription(
                     "Developer tool. While in a form, dumps that body's renderers, materials and " +
                     "shader properties to the BepInEx log, and saves its textures to " +
-                    "BepInEx/config/CatColorProbe/textures.",
+                    "BepInEx/config/PurrtasticPalette/textures.",
                     null,
                     ProbeSection, "ModMenu.Label=Probe Key"));
 

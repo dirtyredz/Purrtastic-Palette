@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>The game's window palette, for the few elements we draw ourselves.</summary>
     internal static class Palette

@@ -1,11 +1,11 @@
-# Cat Color Probe
+# Purrtastic Palette
 
 Recolours Cat Form: body, whiskers, iris, pupil, eye highlight, and the sparkle trail. Two ways
 to set the colours - config values, and a **Cat Form tab in the mirror's wardrobe** with a live
 preview and swatch pickers.
 
 Config settings live under **Colors** in Mod Nook (or
-`BepInEx/config/com.dirtyredz.moonlightpeaks.catcolorprobe.cfg`). Every value is a hex code
+`BepInEx/config/com.dirtyredz.moonlightpeaks.purrtasticpalette.cfg`). Every value is a hex code
 (`#FF8800`) or an HTML colour name (`orange`); blank means "leave vanilla". Changes apply
 immediately — no re-equip, no restart.
 
@@ -42,15 +42,18 @@ closing the wardrobe without confirming reverts to the colours from before you o
 as the game's own try-on clothing.
 
 The **Cat Form** tab shows a paw-print icon. Drop a PNG at
-`BepInEx/config/CatColorProbe/tab-icon.png` to override it (transparent, square, ~256px, art kept
+`BepInEx/config/PurrtasticPalette/tab-icon.png` to override it (transparent, square, ~256px, art kept
 within a centred circle since the tab is a diamond); without one, a generated paw glyph is used.
 
 ## Status
 
 Working and confirmed in-game: all six colours, and the wardrobe tab (preview, swatches, picker,
-decorated headers, stable across leaving and re-entering the mirror). Not published. Still named
-`CatColorProbe` after the diagnostic it started as; a rename means changing the plugin GUID and
-the config path, so it should happen before any release, not after.
+decorated headers, live-preview with revert-on-cancel, paw tab icon, stable across leaving and
+re-entering the mirror). Not published. Renamed from its diagnostic-era name `CatColorProbe` to
+**Purrtastic Palette** (plugin GUID `com.dirtyredz.moonlightpeaks.purrtasticpalette`); the source
+directory is still `mods/CatColorProbe`. It is the cat entry in a themed set with the planned
+Fangtastic Palette (bat) and Fintastic Palette (mermaid) mods. The F7 probe is a dev tool kept in;
+strip it before any public release.
 
 ## How it works
 
@@ -137,7 +140,7 @@ from real-time lighting and its normal map, not from the texture.
 - dumps every renderer under the current form body, its materials, and **all** shader properties
   with values — not just colours
 - reports `HasPropertyBlock` per renderer, which is what identified the property-block problem
-- exports source textures to `BepInEx/config/CatColorProbe/textures/` as PNG, using the same
+- exports source textures to `BepInEx/config/PurrtasticPalette/textures/` as PNG, using the same
   read path as the recolouring so non-readable textures work
 - `ForceTestColor` additionally forces every colour property to magenta, to see which ones are
   actually wired to anything

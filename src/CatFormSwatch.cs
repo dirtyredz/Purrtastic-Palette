@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// One colour swatch, cloned from the game's own CustomizationOptionListWidget so it carries
@@ -96,13 +96,13 @@ namespace CatColorProbe
                 }
 
                 template = best != null ? best.gameObject : null;
-                CatColorProbePlugin.Log.LogInfo(template != null
-                    ? $"[CatColorProbe] Colour swatch template: '{template.name}' ({colourCandidates} colour candidate(s) of {found.Length} total)."
-                    : $"[CatColorProbe] No colour swatch template among {found.Length} widget(s) - using drawn swatches.");
+                PurrtasticPalettePlugin.Log.LogInfo(template != null
+                    ? $"[PurrtasticPalette] Colour swatch template: '{template.name}' ({colourCandidates} colour candidate(s) of {found.Length} total)."
+                    : $"[PurrtasticPalette] No colour swatch template among {found.Length} widget(s) - using drawn swatches.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Swatch template lookup failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Swatch template lookup failed: {e}");
                 template = null;
             }
 
@@ -134,7 +134,7 @@ namespace CatColorProbe
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Swatch clone '{name}' failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Swatch clone '{name}' failed: {e}");
                 return null;
             }
         }

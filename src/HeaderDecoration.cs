@@ -4,7 +4,7 @@ using HarmonyLib;
 using TMPro;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// A decorated row header cloned from the game's own category header - the swirl flourishes on
@@ -36,7 +36,7 @@ namespace CatColorProbe
                 var headerField = AccessTools.Field(typeof(CustomizationCategoryListWidget), "headerText");
                 if (headerField == null)
                 {
-                    CatColorProbePlugin.Log.LogWarning("[CatColorProbe] Header: no headerText field found.");
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Header: no headerText field found.");
                     return null;
                 }
 
@@ -59,13 +59,13 @@ namespace CatColorProbe
                     }
                 }
 
-                CatColorProbePlugin.Log.LogInfo(templateBar != null
-                    ? $"[CatColorProbe] Header template: '{templateBar.name}'."
-                    : "[CatColorProbe] No header template found - using plain labels.");
+                PurrtasticPalettePlugin.Log.LogInfo(templateBar != null
+                    ? $"[PurrtasticPalette] Header template: '{templateBar.name}'."
+                    : "[PurrtasticPalette] No header template found - using plain labels.");
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Header template lookup failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Header template lookup failed: {e}");
                 templateBar = null;
             }
 
@@ -107,7 +107,7 @@ namespace CatColorProbe
             }
             catch (Exception e)
             {
-                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Header clone '{text}' failed: {e}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Header clone '{text}' failed: {e}");
                 return null;
             }
         }

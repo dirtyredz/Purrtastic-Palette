@@ -3,7 +3,7 @@ using Chicken.Utilities;
 using HarmonyLib;
 using UnityEngine;
 
-namespace CatColorProbe
+namespace PurrtasticPalette
 {
     /// <summary>
     /// Applies Colors/FurColor and Colors/EyeColor to the Cat Form body whenever it becomes
@@ -19,7 +19,7 @@ namespace CatColorProbe
     [HarmonyPatch(typeof(FormToolView<CatToolAsset>), "HandleEnterVisuallySwitchedBodyViews")]
     internal static class CatColorPatch
     {
-        // Confirmed by probing (see mods/CatColorProbe/src/ProbeController.cs and the research
+        // Confirmed by probing (see mods/PurrtasticPalette/src/ProbeController.cs and the research
         // that led here): the fur's SkinnedMeshRenderer carries two materials - "HellKitten01"
         // (URP/Lit, texture on _BaseMap) and "GradientAtlas" (the same Game/Atlas/Atlas shader
         // the eyes use, texture on _Atlas). Regenerating only HellKitten01's _BaseMap produced
@@ -186,10 +186,10 @@ namespace CatColorProbe
 
             suppressLogging = !logVerbose;
 
-            var furColor = CatColorProbePlugin.FurColor.Value;
-            var whiskerColor = CatColorProbePlugin.WhiskerColor.Value;
-            var eyeColor = CatColorProbePlugin.EyeColor.Value;
-            var auraColor = CatColorProbePlugin.AuraColor.Value;
+            var furColor = PurrtasticPalettePlugin.FurColor.Value;
+            var whiskerColor = PurrtasticPalettePlugin.WhiskerColor.Value;
+            var eyeColor = PurrtasticPalettePlugin.EyeColor.Value;
+            var auraColor = PurrtasticPalettePlugin.AuraColor.Value;
             var furMatches = 0;
             var whiskerMatches = 0;
             var eyeMatches = 0;
@@ -267,9 +267,9 @@ namespace CatColorProbe
 
         private static void Debug(string message)
         {
-            if (!suppressLogging && CatColorProbePlugin.ColorsVerboseLogging.Value)
+            if (!suppressLogging && PurrtasticPalettePlugin.ColorsVerboseLogging.Value)
             {
-                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] {message}");
+                PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] {message}");
             }
         }
 
@@ -324,7 +324,7 @@ namespace CatColorProbe
 
             if (!TryParseColor(hex, out var color))
             {
-                CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] FurColor '{hex}' is not a valid colour.");
+                PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] FurColor '{hex}' is not a valid colour.");
                 return;
             }
 
@@ -415,7 +415,7 @@ namespace CatColorProbe
 
                 if (!TryParseColor(hex, out var color))
                 {
-                    CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] EyeColor '{hex}' is not a valid colour.");
+                    PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] EyeColor '{hex}' is not a valid colour.");
                     continue;
                 }
 
@@ -424,8 +424,8 @@ namespace CatColorProbe
                     OriginalEyeAtlases[material] = material.GetTexture("_Atlas");
                 }
 
-                var highlightColor = ParseOptionalColor(CatColorProbePlugin.EyeHighlightColor.Value, "EyeHighlightColor");
-                var pupilColor = ParseOptionalColor(CatColorProbePlugin.PupilColor.Value, "PupilColor");
+                var highlightColor = ParseOptionalColor(PurrtasticPalettePlugin.EyeHighlightColor.Value, "EyeHighlightColor");
+                var pupilColor = ParseOptionalColor(PurrtasticPalettePlugin.PupilColor.Value, "PupilColor");
 
                 var recolored = TextureRecolor.GetOrBuild(
                     OriginalEyeAtlases[material], hex, color, EyePupilSaturation, highlightColor, EyeBrightnessFloor,
@@ -476,7 +476,7 @@ namespace CatColorProbe
 
                     if (!TryParseColor(hex, out var color))
                     {
-                        CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] AuraColor '{hex}' is not a valid colour.");
+                        PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] AuraColor '{hex}' is not a valid colour.");
                         continue;
                     }
 
@@ -511,7 +511,7 @@ namespace CatColorProbe
                 return parsed;
             }
 
-            CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] {settingName} '{hex}' is not a valid colour.");
+            PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] {settingName} '{hex}' is not a valid colour.");
             return null;
         }
 
