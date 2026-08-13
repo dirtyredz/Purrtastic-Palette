@@ -39,7 +39,14 @@ namespace CatColorProbe
         /// eye horizontally into "top half" and "bottom half" (observed in-game) instead of
         /// separating iris from pupil - it was slicing across the gradient rather than between
         /// strips. Splitting on saturation separates strip-from-strip, which is the actual
-        /// semantic boundary. Pass 0 (no pixel has negative saturation) to disable the split.
+        /// semantic boundary.
+        ///
+        /// Pass a NEGATIVE value to disable the split - not 0. Saturation is exactly 0 for any
+        /// pure black/grey pixel, so a 0 threshold still matches, and every such pixel gets
+        /// copied through unrecoloured. On the near-black fur texture that meant almost the
+        /// entire coat was deliberately preserved as black while only the few saturated pixels
+        /// took the target colour, which read in-game as "the colour is overlaying on top of the
+        /// black fur".
         /// </param>
         /// <param name="highlightColor">
         /// What the highlight region (see protectAboveLuminance) is remapped toward, using the
@@ -59,7 +66,7 @@ namespace CatColorProbe
         /// range preserved (darkest source pixels can still go near-black).
         /// </param>
         internal static Texture2D GetOrBuild(
-            Texture source, string hex, Color target, float splitBelowSaturation = 0f, Color? highlightColor = null,
+            Texture source, string hex, Color target, float splitBelowSaturation = -1f, Color? highlightColor = null,
             float brightnessFloor = 0f)
         {
             var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor);

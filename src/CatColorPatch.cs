@@ -255,6 +255,14 @@ namespace CatColorProbe
                 {
                     material.SetColor("_EmissionColor", originalEmission);
                     material.DisableKeyword("_EMISSION");
+                    // _EmissionMap probed as null originally, so clearing it back to null is the
+                    // correct restore - the property block can't unset a texture, but with
+                    // _EMISSION off and _EmissionColor back to black it contributes nothing.
+                    if (material.HasProperty("_EmissionMap"))
+                    {
+                        material.SetTexture("_EmissionMap", null);
+                    }
+
                     WriteToPropertyBlock(renderer, materialIndex, null, null, "_EmissionColor", originalEmission);
                     Debug($"Fur: restored '{material.name}' _EmissionColor to original.");
                 }
@@ -281,12 +289,67 @@ namespace CatColorProbe
                 return;
             }
 
-            var emission = color * strength;
             material.EnableKeyword("_EMISSION");
             material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+
+            // Feed a recoloured texture into _EmissionMap (probed as null) so emission varies
+            // per-pixel with the fur's own light/dark pattern. URP computes emission as
+            // _EmissionMap.rgb * _EmissionColor.rgb, so with the map carrying both colour and
+            // shading, _EmissionColor only needs to be a neutral strength multiplier - tinting it
+            // as well would double-apply the hue. A flat _EmissionColor with no map (what this
+            // did before) emits one uniform value across the whole body, which is why it read as
+            // a translucent wash over black and erased the shadows as it was turned up.
+            //
+            // The map is built with its OWN high brightness floor rather than reusing the albedo
+            // texture. The albedo is deliberately allowed to stay dark (RecolorBrightnessFloor
+            // controls that, and low values are a legitimate choice for keeping the fur's
+            // shading), but a near-black emission map emits near-nothing no matter how far
+            // FurGlow is turned up - which is exactly why FurGlow appeared to do nothing at a low
+            // floor. Emission needs to be bright to emit; shading variation comes from the
+            // texture's relative light/dark pattern, which survives the floor.
+            var emissionSource = TryBuildFurEmissionMap(material, hex, color);
+            if (emissionSource != null && material.HasProperty("_EmissionMap"))
+            {
+                var emissionStrength = Color.white * strength;
+                material.SetTexture("_EmissionMap", emissionSource);
+                material.SetColor("_EmissionColor", emissionStrength);
+                WriteToPropertyBlock(renderer, materialIndex, "_EmissionMap", emissionSource, "_EmissionColor", emissionStrength);
+                Debug($"Fur: '{material.name}' emission via _EmissionMap '{emissionSource.name}' at strength {strength}.");
+                return;
+            }
+
+            // No emission map available - fall back to the old flat tint.
+            var emission = color * strength;
             material.SetColor("_EmissionColor", emission);
             WriteToPropertyBlock(renderer, materialIndex, null, null, "_EmissionColor", emission);
-            Debug($"Fur: set '{material.name}' _EmissionColor to {emission} (glow {strength}).");
+            Debug($"Fur: set '{material.name}' _EmissionColor to {emission} (flat, no _EmissionMap; glow {strength}).");
+        }
+
+        /// <summary>
+        /// Builds a bright, still-shaded recolour of this material's original albedo texture for
+        /// use as an emission map. Deliberately uses its own high brightness floor instead of
+        /// RecolorBrightnessFloor: the albedo may legitimately be kept dark to preserve shading,
+        /// but emission has to actually be bright to emit anything.
+        /// </summary>
+        private const float EmissionMapBrightnessFloor = 0.7f;
+
+        private static Texture TryBuildFurEmissionMap(Material material, string hex, Color color)
+        {
+            foreach (var property in new[] { "_BaseMap", "_MainTex", "_Atlas" })
+            {
+                if (!OriginalFurTextures.TryGetValue((material, property), out var original) || original == null)
+                {
+                    continue;
+                }
+
+                // Distinct cache key from the albedo build so the two brightness levels coexist
+                // rather than one evicting or masquerading as the other.
+                return TextureRecolor.GetOrBuild(
+                    original, hex + "_emissive", color, splitBelowSaturation: -1f,
+                    brightnessFloor: EmissionMapBrightnessFloor);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -338,8 +401,13 @@ namespace CatColorProbe
                 }
             }
 
+            // splitBelowSaturation: -1 disables the pupil/iris split entirely. It must be
+            // negative, not 0 - the fur texture is overwhelmingly near-black desaturated pixels
+            // whose saturation is exactly 0, so a 0 threshold matched them all and copied them
+            // through unrecoloured, leaving the coat black.
             var recolored = TextureRecolor.GetOrBuild(
-                OriginalFurTextures[key], hex, color, brightnessFloor: CatColorProbePlugin.RecolorBrightnessFloor.Value);
+                OriginalFurTextures[key], hex, color, splitBelowSaturation: -1f,
+                brightnessFloor: CatColorProbePlugin.RecolorBrightnessFloor.Value);
 
             // Set both: the material (harmless, and correct if no block is ever present) and the
             // property block (what actually wins at draw time when the game has set one).
@@ -435,7 +503,10 @@ namespace CatColorProbe
                     }
                 }
 
-                var floor = CatColorProbePlugin.RecolorBrightnessFloor.Value;
+                // Eyes get their own floor, not the fur's: the fur needs a high floor to escape
+                // its near-black texture, while the eyes need a low one so the dark parts of the
+                // eye stay dark. Sharing one value pushed the black pupils to full brightness.
+                var floor = CatColorProbePlugin.EyeBrightnessFloor.Value;
                 var recolored = TextureRecolor.GetOrBuild(OriginalEyeAtlases[material], hex, color, threshold, pupilColor, floor);
                 material.SetTexture("_Atlas", recolored);
                 WriteToPropertyBlock(renderer, materialIndex, "_Atlas", recolored, null, null);

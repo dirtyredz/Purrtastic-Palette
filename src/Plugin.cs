@@ -31,6 +31,7 @@ namespace CatColorProbe
         internal static ConfigEntry<float> EyeHighlightThreshold;
         internal static ConfigEntry<string> PupilColor;
         internal static ConfigEntry<float> RecolorBrightnessFloor;
+        internal static ConfigEntry<float> EyeBrightnessFloor;
         internal static ConfigEntry<string> AuraColor;
         internal static ConfigEntry<float> FurGlow;
         internal static ConfigEntry<bool> ColorsVerboseLogging;
@@ -97,7 +98,7 @@ namespace CatColorProbe
                     ColorsSection, "ModMenu.Label=Pupil Color"));
 
             FurGlow = Config.Bind(
-                "Colors", "FurGlow", 0.35f,
+                "Colors", "FurGlow", 0f,
                 new ConfigDescription(
                     "How strongly FurColor is emitted as light by the fur itself (0-1), " +
                     "independent of scene lighting. The fur material is Universal Render " +
@@ -105,24 +106,45 @@ namespace CatColorProbe
                     "scene lighting - which is why recolouring the texture alone only ever " +
                     "produced a dim 'shaded' version of the colour no matter how vivid the " +
                     "texture was made. Emission bypasses lighting entirely, the same reason the " +
-                    "eyes read as bright. 0 = albedo only (old behaviour); higher = more vivid " +
-                    "and more self-lit. Only applies while FurColor is set.",
+                    "eyes read as bright. NOTE: this appears to do nothing in the shipped game, " +
+                    "and is off by default because of it. Unity strips unused shader variants at " +
+                    "build time; this material ships with _EmissionColor black and _EmissionMap " +
+                    "unset, so the URP/Lit _EMISSION variant is most likely not in the build at " +
+                    "all - EnableKeyword then silently no-ops and nothing renders, however high " +
+                    "this is set. Left in because it costs nothing and would work if that " +
+                    "assumption is ever wrong. Use RecolorBrightnessFloor for fur brightness " +
+                    "instead. Only applies while FurColor is set.",
                     new AcceptableValueRange<float>(0f, 1f),
                     ColorsSection, "ModMenu.Label=Fur Glow"));
 
             RecolorBrightnessFloor = Config.Bind(
-                "Colors", "RecolorBrightnessFloor", 0.5f,
+                "Colors", "RecolorBrightnessFloor", 1f,
                 new ConfigDescription(
-                    "Raises how bright a naturally dark source region can still get when " +
-                    "recoloured (0-1). Plain luminance-multiply means a dark source region can " +
-                    "only ever produce a dark, muted result no matter how saturated the target " +
-                    "colour is - this is why the fur coat and iris (both naturally dark regions " +
-                    "of their textures) came out barely changed while whiskers and the pupil " +
-                    "(naturally bright regions of the same textures) recoloured strongly. 0 = " +
-                    "original behaviour (full shading preserved, dark stays dark). Higher values " +
-                    "trade shading detail for a stronger, more even colour.",
+                    "Raises how bright a naturally dark source region of the FUR can still get " +
+                    "when recoloured (0-1); the eyes have their own EyeBrightnessFloor. The Cat " +
+                    "Form fur texture is near-black almost everywhere " +
+                    "by design, so a low value here keeps the recoloured fur nearly black too - " +
+                    "the colour reads as a dim tint over black rather than as the colour itself. " +
+                    "1.0 (the default) makes the albedo the full target colour. That costs very " +
+                    "little on this particular texture, because the fur's visible shading comes " +
+                    "mostly from real-time lighting and its normal map (HellKitten_NRM) rather " +
+                    "than from brightness baked into the albedo - so the model still looks shaded " +
+                    "and rounded, just properly coloured. Lower it if you want the texture's own " +
+                    "baked dark patches to show through.",
                     new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Recolor Brightness Floor"));
+                    ColorsSection, "ModMenu.Label=Fur Brightness Floor"));
+
+            EyeBrightnessFloor = Config.Bind(
+                "Colors", "EyeBrightnessFloor", 0f,
+                new ConfigDescription(
+                    "The same brightness floor as RecolorBrightnessFloor, but for the eyes only " +
+                    "(0-1). Kept separate because the two want opposite settings: the fur needs " +
+                    "a high floor to escape its near-black texture, while the eyes need a LOW " +
+                    "one so the dark parts of the eye stay dark. Sharing one value forced the " +
+                    "black pupils to full brightness along with the fur. 0 (the default) keeps " +
+                    "the eye's original brightness exactly and only changes hue/saturation.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    ColorsSection, "ModMenu.Label=Eye Brightness Floor"));
 
             AuraColor = Config.Bind(
                 "Colors", "AuraColor", "",
