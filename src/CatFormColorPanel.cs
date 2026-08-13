@@ -268,6 +268,7 @@ namespace CatColorProbe
                 Apply(setting, hex);
                 RefreshSelection();
             });
+            swatch.AddComponent<ScrollForwarder>(); // EventTrigger eats the wheel; keep the panel scrollable
 
             Swatches.Add(new SwatchEntry(setting, hex, ring, check, isCustomTile: false));
         }
@@ -301,6 +302,7 @@ namespace CatColorProbe
             AddTrigger(trigger, EventTriggerType.PointerEnter, () => ring.enabled = true);
             AddTrigger(trigger, EventTriggerType.PointerExit, () => ring.enabled = IsCustomValue(setting));
             AddTrigger(trigger, EventTriggerType.PointerClick, () => OpenPicker(parent, setting));
+            swatch.AddComponent<ScrollForwarder>(); // EventTrigger eats the wheel; keep the panel scrollable
 
             Swatches.Add(new SwatchEntry(setting, null, ring, check, isCustomTile: true));
         }

@@ -79,6 +79,7 @@ namespace CatColorProbe
                 bumperMenu.AddItem(new BumperMenuWidget.WidgetData
                 {
                     Text = "Cat Form",
+                    Icon = TabIcon.Get(),
                     OnSelect = ShowCatInPreview,
                 });
 

@@ -186,6 +186,9 @@ namespace CatColorProbe
             AddTrigger(trigger, EventTriggerType.PointerEnter, () => { hovered = true; Refresh(); });
             AddTrigger(trigger, EventTriggerType.PointerExit, () => { hovered = false; Refresh(); });
             AddTrigger(trigger, EventTriggerType.PointerClick, () => onClick?.Invoke());
+            // EventTrigger swallows the mouse wheel (it implements IScrollHandler); forward it so the
+            // wardrobe ScrollRect still scrolls while the cursor is over a swatch.
+            gameObject.AddComponent<ScrollForwarder>();
 
             if (frame != null)
             {

@@ -37,6 +37,14 @@ drag) rather than building a clip mask, which blanked the whole panel twice. Kno
 keeps nulling a keyboard cursor, so that was shelved. Mouse works fully. See the design notes at the
 repo root ([17-wardrobe-ui.md](../../17-wardrobe-ui.md)).
 
+A swatch pick is a live **preview**: it applies immediately but only sticks if you press Confirm -
+closing the wardrobe without confirming reverts to the colours from before you opened it, the same
+as the game's own try-on clothing.
+
+The **Cat Form** tab shows a paw-print icon. Drop a PNG at
+`BepInEx/config/CatColorProbe/tab-icon.png` to override it (transparent, square, ~256px, art kept
+within a centred circle since the tab is a diamond); without one, a generated paw glyph is used.
+
 ## Status
 
 Working and confirmed in-game: all six colours, and the wardrobe tab (preview, swatches, picker,
