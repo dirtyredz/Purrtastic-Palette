@@ -29,14 +29,9 @@ namespace CatColorProbe
         internal static ConfigEntry<string> FurColor;
         internal static ConfigEntry<string> WhiskerColor;
         internal static ConfigEntry<string> EyeColor;
-        internal static ConfigEntry<float> EyeHighlightThreshold;
         internal static ConfigEntry<string> EyeHighlightColor;
         internal static ConfigEntry<string> PupilColor;
-        internal static ConfigEntry<float> EyePupilValue;
-        internal static ConfigEntry<float> RecolorBrightnessFloor;
-        internal static ConfigEntry<float> EyeBrightnessFloor;
         internal static ConfigEntry<string> AuraColor;
-        internal static ConfigEntry<float> FurGlow;
         internal static ConfigEntry<bool> ColorsVerboseLogging;
         internal static readonly Color TestColor = new Color(1f, 0f, 1f); // neon magenta, nothing in-game looks like this by accident
 
@@ -58,10 +53,10 @@ namespace CatColorProbe
                 new ConfigDescription(
                     "Cat Form fur colour. Accepts a hex code (\"#FF8800\") or an HTML colour " +
                     "name (\"orange\"). Blank = leave the default fur colour alone. Works by " +
-                    "regenerating the fur's texture(s) with HSV colorize: every pixel takes " +
-                    "this colour's hue/saturation but keeps its own original brightness, so " +
-                    "shading is preserved without washing the colour out. See " +
-                    "RecolorBrightnessFloor if dark regions of the fur still read too dim.",
+                    "regenerating the fur's albedo texture, which is near-black by design, so " +
+                    "the colour is applied at full brightness - the body still looks shaded and " +
+                    "rounded because that shading comes from real-time lighting and the normal " +
+                    "map rather than from the texture.",
                     null,
                     ColorsSection, "ModMenu.Label=Fur Color"));
 
@@ -80,29 +75,12 @@ namespace CatColorProbe
                 "Colors", "EyeColor", "",
                 new ConfigDescription(
                     "Cat Form eye colour. Accepts a hex code or an HTML colour name. Blank = " +
-                    "leave the default eye colour alone. Same texture-regeneration technique as " +
-                    "FurColor, applied to the eyes' shared gradient atlas texture. See " +
-                    "EyeHighlightThreshold to control how much of the pupil/highlight resists " +
-                    "being recoloured.",
+                    "leave the default eye colour alone. This colours the iris only - the pupil " +
+                    "and the bright highlight are detected separately and have their own " +
+                    "settings (PupilColor and EyeHighlightColor).",
                     null,
                     ColorsSection, "ModMenu.Label=Eye Color"));
 
-            EyeHighlightThreshold = Config.Bind(
-                "Colors", "EyePupilSaturation", 0.7f,
-                new ConfigDescription(
-                    "Source eye-atlas pixels with LESS colour saturation than this (0-1) are " +
-                    "treated as the pupil and take PupilColor; everything more saturated takes " +
-                    "EyeColor. Saturation is the right axis, not brightness: the atlas is built " +
-                    "from vertical gradient strips (one swatch colour each), so brightness varies " +
-                    "top-to-bottom WITHIN a strip while saturation stays constant - splitting on " +
-                    "brightness sliced the eye into a top half and bottom half instead of " +
-                    "separating iris from pupil. Raise this if too little counts as pupil; lower " +
-                    "it if too much does. 0 disables the split entirely (whole eye takes " +
-                    "EyeColor). The 0.7 default was found by testing - the eye's pupil and " +
-                    "highlight are less saturated than the iris but not close to pure grey, so a " +
-                    "low threshold missed them entirely.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Eye Pupil Saturation"));
 
             EyeHighlightColor = Config.Bind(
                 "Colors", "EyeHighlightColor", "",
@@ -118,73 +96,13 @@ namespace CatColorProbe
                 "Colors", "PupilColor", "",
                 new ConfigDescription(
                     "Colour for the actual pupil (the dark centre) - hex code or HTML colour " +
-                    "name. Blank = leave it vanilla black. The pupil and the highlight are both " +
-                    "fully desaturated, so saturation alone cannot separate them - they are told " +
-                    "apart by brightness via EyePupilValue. Because the pupil is near-black, the " +
+                    "name. Blank = leave it vanilla black. Because the pupil is near-black, the " +
                     "colour set here is applied at its own full brightness rather than being " +
                     "scaled by the pupil's original darkness, which would leave it black no " +
                     "matter what was picked. Only has any effect while EyeColor is also set.",
                     null,
                     ColorsSection, "ModMenu.Label=Pupil Color"));
 
-            EyePupilValue = Config.Bind(
-                "Colors", "EyePupilValue", 0.35f,
-                new ConfigDescription(
-                    "Within the desaturated part of the eye, pixels darker than this (0-1) are " +
-                    "the pupil; brighter ones are the highlight. Raise it if part of the pupil " +
-                    "is still being treated as highlight; lower it if the highlight is bleeding " +
-                    "into the pupil.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Eye Pupil Value Split"));
-
-            FurGlow = Config.Bind(
-                "Colors", "FurGlow", 0f,
-                new ConfigDescription(
-                    "How strongly FurColor is emitted as light by the fur itself (0-1), " +
-                    "independent of scene lighting. The fur material is Universal Render " +
-                    "Pipeline/Lit, so its albedo gets multiplied by the (very dark, night-time) " +
-                    "scene lighting - which is why recolouring the texture alone only ever " +
-                    "produced a dim 'shaded' version of the colour no matter how vivid the " +
-                    "texture was made. Emission bypasses lighting entirely, the same reason the " +
-                    "eyes read as bright. NOTE: this appears to do nothing in the shipped game, " +
-                    "and is off by default because of it. Unity strips unused shader variants at " +
-                    "build time; this material ships with _EmissionColor black and _EmissionMap " +
-                    "unset, so the URP/Lit _EMISSION variant is most likely not in the build at " +
-                    "all - EnableKeyword then silently no-ops and nothing renders, however high " +
-                    "this is set. Left in because it costs nothing and would work if that " +
-                    "assumption is ever wrong. Use RecolorBrightnessFloor for fur brightness " +
-                    "instead. Only applies while FurColor is set.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Fur Glow"));
-
-            RecolorBrightnessFloor = Config.Bind(
-                "Colors", "RecolorBrightnessFloor", 1f,
-                new ConfigDescription(
-                    "Raises how bright a naturally dark source region of the FUR can still get " +
-                    "when recoloured (0-1); the eyes have their own EyeBrightnessFloor. The Cat " +
-                    "Form fur texture is near-black almost everywhere " +
-                    "by design, so a low value here keeps the recoloured fur nearly black too - " +
-                    "the colour reads as a dim tint over black rather than as the colour itself. " +
-                    "1.0 (the default) makes the albedo the full target colour. That costs very " +
-                    "little on this particular texture, because the fur's visible shading comes " +
-                    "mostly from real-time lighting and its normal map (HellKitten_NRM) rather " +
-                    "than from brightness baked into the albedo - so the model still looks shaded " +
-                    "and rounded, just properly coloured. Lower it if you want the texture's own " +
-                    "baked dark patches to show through.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Fur Brightness Floor"));
-
-            EyeBrightnessFloor = Config.Bind(
-                "Colors", "EyeBrightnessFloor", 0f,
-                new ConfigDescription(
-                    "The same brightness floor as RecolorBrightnessFloor, but for the eyes only " +
-                    "(0-1). Kept separate because the two want opposite settings: the fur needs " +
-                    "a high floor to escape its near-black texture, while the eyes need a LOW " +
-                    "one so the dark parts of the eye stay dark. Sharing one value forced the " +
-                    "black pupils to full brightness along with the fur. 0 (the default) keeps " +
-                    "the eye's original brightness exactly and only changes hue/saturation.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    ColorsSection, "ModMenu.Label=Eye Brightness Floor"));
 
             AuraColor = Config.Bind(
                 "Colors", "AuraColor", "",
