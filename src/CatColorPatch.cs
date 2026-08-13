@@ -1,0 +1,514 @@
+using System.Collections.Generic;
+using Chicken.Utilities;
+using HarmonyLib;
+using UnityEngine;
+
+namespace CatColorProbe
+{
+    /// <summary>
+    /// Applies Colors/FurColor and Colors/EyeColor to the Cat Form body whenever it becomes
+    /// visible. Patched on FormToolView&lt;CatToolAsset&gt;.HandleEnterVisuallySwitchedBodyViews
+    /// (CatToolView doesn't override it, so this closed-generic MethodInfo is the one that
+    /// actually runs) rather than HandleEquipped: HandleEquipped fires before
+    /// EntityCustomization.SetBodyView's load coroutine finishes, while
+    /// HandleEnterVisuallySwitchedBodyViews is the callback for
+    /// EntityCustomization.OnVisuallySwitchedBodyViews, which only fires once the new body is
+    /// fully loaded and active - by design, the first correct moment to touch its renderers.
+    /// Fires on every equip, including from a save that loads directly into Cat Form.
+    /// </summary>
+    [HarmonyPatch(typeof(FormToolView<CatToolAsset>), "HandleEnterVisuallySwitchedBodyViews")]
+    internal static class CatColorPatch
+    {
+        // Confirmed by probing (see mods/CatColorProbe/src/ProbeController.cs and the research
+        // that led here): the fur's SkinnedMeshRenderer carries two materials - "HellKitten01"
+        // (URP/Lit, texture on _BaseMap) and "GradientAtlas" (the same Game/Atlas/Atlas shader
+        // the eyes use, texture on _Atlas). Regenerating only HellKitten01's _BaseMap produced
+        // zero visible change across five very different test colours (including cyan and
+        // white, which should be unmissable against an orange base) - not the muted-tint
+        // physics problem, since that would still show *some* shift. The visible fur must
+        // actually be driven mostly or entirely by the GradientAtlas submesh instead (the same
+        // material that demonstrably works for the eyes), so both are recoloured for FurColor.
+        // The eyes are a distinct SkinnedMeshRenderer named "HellKittenEyes" using GradientAtlas
+        // too, with iris/sclera/pupil picked by UV baked into the mesh rather than anything
+        // settable here. All three are handled by regenerating the relevant texture via
+        // TextureRecolor rather than a flat multiply-tint or flat texture swap: a flat tint on
+        // _BaseColor can't introduce a channel the base texture doesn't have, and a flat
+        // solid-colour texture swap flattens every UV region - including the pupil - to one
+        // color. Regenerating by source luminance fixes both: the target's own channels are what
+        // get scaled, and a source region's original brightness controls how strongly it takes
+        // the new colour.
+        private static readonly string[] FurMaterialPrefixes = { "HellKitten01", "GradientAtlas" };
+        private const string EyeRendererName = "HellKittenEyes";
+
+        // HellKitten01 turned out to carry TWO albedo slots at once: _BaseMap/_BaseColor (URP/Lit's
+        // own) and _MainTex/_Color (Standard-shader legacy, still present because this material
+        // was converted from Standard rather than authored fresh - _WorkflowMode and
+        // _Glossiness/_GlossyReflections are the other tells). Regenerating only _BaseMap left
+        // _MainTex pointing at the original, untouched HellKitten_DIF texture, which explains the
+        // "changed a little, but very lightly" result - whatever this shader variant actually
+        // samples for albedo, only recoloring one of the two slots could only ever partially win.
+        // Both get regenerated now, plus _Atlas for GradientAtlas.
+        private static readonly (string TexProperty, string TintProperty)[] FurTexturePairs =
+        {
+            ("_BaseMap", "_BaseColor"),
+            ("_MainTex", "_Color"),
+            ("_Atlas", null),
+        };
+
+        // HellKitten_DIF (the fur's diffuse texture) turned out to be almost pure black
+        // everywhere once exported and actually looked at - this creature is a shadow silhouette
+        // by design. What actually reads as its colour on screen is most likely one of these VFX
+        // instead. First guess was "Aura" (ParticleFireFlies, Game/Particle/Unlit/Additive) alone
+        // - recoloring it had no visible effect, which fits "FireFlies" being a handful of small
+        // sparkle-dust particles rather than the broad glow seen in screenshots. "Trail"
+        // (VFXKittenTrail, Shader Graphs/Trail) is a much better match for the whisker-spike
+        // glow: its _ColorA/_ColorB are a purple-blue/red-pink HDR pair (values above 1.0 - an
+        // additive gradient blend), exactly the magenta rim look in the reference screenshots.
+        // "White" is left alone - almost certainly a highlight/blend-strength channel, not a hue.
+        private static readonly string[] GlowRendererNames = { "Aura", "Trail" };
+        private static readonly string[] GlowColorProperties = { "_EmissionColor", "_Color", "_ColorA", "_ColorB" };
+
+        // Original values, captured the first time a given material+property is overridden, so
+        // clearing the config back to blank has something to restore instead of just no-op'ing
+        // and leaving the last override in place. Keyed by the live Material instance - a fresh
+        // one exists every time EntityCustomization.SetBodyView instantiates a new copy of the
+        // body prefab (i.e. every re-equip), so this never needs explicit eviction.
+        private static readonly Dictionary<(Material Material, string Property), Texture> OriginalFurTextures =
+            new Dictionary<(Material, string), Texture>();
+        private static readonly Dictionary<(Material Material, string Property), Color> OriginalFurTints =
+            new Dictionary<(Material, string), Color>();
+        private static readonly Dictionary<Material, Texture> OriginalEyeAtlases = new Dictionary<Material, Texture>();
+        private static readonly Dictionary<(Material Material, string Property), Color> OriginalAuraColors =
+            new Dictionary<(Material, string), Color>();
+
+        /// <summary>
+        /// Looks up the pristine, never-recoloured texture for a material+property, if this mod
+        /// has ever overridden it - used by ProbeController's texture export so pressing F7 while
+        /// FurColor/EyeColor are already set exports the real source art instead of re-exporting
+        /// our own regenerated result under a misleadingly "original-looking" filename.
+        /// </summary>
+        internal static bool TryGetOriginalTexture(Material material, string property, out Texture original)
+        {
+            if (property == "_Atlas" && OriginalEyeAtlases.TryGetValue(material, out original))
+            {
+                return true;
+            }
+
+            return OriginalFurTextures.TryGetValue((material, property), out original);
+        }
+
+        // Suppresses Debug() while the periodic reapply safety net (see ProbeController.Update)
+        // runs, so a once-a-second background call doesn't flood LogOutput.log the same way an
+        // equip or a config edit legitimately should.
+        private static bool suppressLogging;
+
+        [HarmonyPostfix]
+        private static void Postfix()
+        {
+            ApplyCatColors();
+        }
+
+        /// <param name="includeEyes">
+        /// False skips the eye renderer entirely. The eyes never showed the same "reverts back
+        /// to default" symptom fur did when applied once per equip/config-change - they visibly
+        /// got *worse* once put behind the same every-frame reapply loop fur needed (colour
+        /// reading as washed/"shaded", and clearing PupilColor sometimes taking EyeColor down
+        /// with it). That's the signature of us fighting something else at matched frequency
+        /// rather than reliably winning against it, so eyes are back to single-shot: applied by
+        /// the Harmony postfix on equip and by Config.SettingChanged on a config edit, but not
+        /// from ProbeController's per-frame safety net (which passes includeEyes: false).
+        /// </param>
+        internal static void ApplyCatColors(bool logVerbose = true, bool includeEyes = true)
+        {
+            suppressLogging = !logVerbose;
+
+            if (!MonoBehaviourSingleton<PlayerView>.Exists)
+            {
+                Debug("No PlayerView yet - skipping.");
+                return;
+            }
+
+            // No further "is this actually Cat Form" check needed: this patch targets the
+            // closed generic FormToolView<CatToolAsset>, which Bat/Aqua Form don't share a
+            // RuntimeMethodHandle with even though the source is inherited, so this postfix
+            // only ever runs as a result of Cat Form's own equip flow.
+            var bodyView = MonoBehaviourSingleton<PlayerView>.Instance.Customization.BodyView;
+            if (bodyView == null)
+            {
+                Debug("Customization.BodyView is null - skipping.");
+                return;
+            }
+
+            var furColor = CatColorProbePlugin.FurColor.Value;
+            var eyeColor = CatColorProbePlugin.EyeColor.Value;
+            var auraColor = CatColorProbePlugin.AuraColor.Value;
+            var furMatches = 0;
+            var eyeMatches = 0;
+            var auraMatches = 0;
+
+            // Always walk every renderer, even with FurColor blank: a blank field still needs to
+            // reach ApplyFurColor so a previously-applied override on this renderer's
+            // already-instanced material gets restored, not just skipped.
+            foreach (var renderer in bodyView.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.gameObject.name == EyeRendererName)
+                {
+                    if (includeEyes)
+                    {
+                        eyeMatches++;
+                        ApplyEyeColor(renderer, eyeColor);
+                    }
+
+                    continue;
+                }
+
+                var isGlowRenderer = false;
+                foreach (var glowName in GlowRendererNames)
+                {
+                    if (renderer.gameObject.name == glowName)
+                    {
+                        isGlowRenderer = true;
+                        break;
+                    }
+                }
+
+                if (isGlowRenderer)
+                {
+                    auraMatches++;
+                    ApplyAuraColor(renderer, auraColor);
+                    continue;
+                }
+
+                var rendererMaterials = renderer.materials;
+                for (var materialIndex = 0; materialIndex < rendererMaterials.Length; materialIndex++)
+                {
+                    var material = rendererMaterials[materialIndex];
+                    if (material == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var prefix in FurMaterialPrefixes)
+                    {
+                        if (material.name.StartsWith(prefix))
+                        {
+                            furMatches++;
+                            ApplyFurColor(renderer, materialIndex, material, furColor);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            Debug($"ApplyCatColors on '{bodyView.gameObject.name}': FurColor='{furColor}' matched " +
+                  $"{furMatches} material(s), EyeColor='{eyeColor}' matched {eyeMatches} renderer(s), " +
+                  $"AuraColor='{auraColor}' matched {auraMatches} renderer(s), includeEyes={includeEyes}.");
+        }
+
+        private static void Debug(string message)
+        {
+            if (!suppressLogging && CatColorProbePlugin.ColorsVerboseLogging.Value)
+            {
+                CatColorProbePlugin.Log.LogInfo($"[CatColorProbe] {message}");
+            }
+        }
+
+        private static void ApplyFurColor(Renderer renderer, int materialIndex, Material material, string hex)
+        {
+            // A material may carry more than one of these slots at once (HellKitten01 has both
+            // _BaseMap and _MainTex) - every one present gets regenerated independently, so
+            // there's no slot left showing the stale original texture underneath.
+            foreach (var (texProperty, tintProperty) in FurTexturePairs)
+            {
+                if (material.HasProperty(texProperty))
+                {
+                    ApplyFurTextureSlot(renderer, materialIndex, material, texProperty, tintProperty, hex);
+                }
+            }
+
+            ApplyFurEmission(renderer, materialIndex, material, hex);
+        }
+
+        /// <summary>
+        /// Drives _EmissionColor so the fur shows its colour independent of scene lighting.
+        /// HellKitten01 is Universal Render Pipeline/Lit: its albedo is multiplied by the scene's
+        /// (night-time, very dark) lighting, so recolouring the albedo texture alone could only
+        /// ever produce a dim, "shaded" version of the target - no amount of texture vibrancy
+        /// survives being multiplied toward black. Emission skips that multiply, which is exactly
+        /// why the eyes (Game/Atlas/Atlas, effectively unlit) read as bright while the body never
+        /// did. Requires enabling the _EMISSION shader keyword - it's off by default here
+        /// (_EmissionColor probed as solid black), and without the keyword URP strips the
+        /// emission pass entirely and setting the colour does nothing.
+        /// </summary>
+        private static void ApplyFurEmission(Renderer renderer, int materialIndex, Material material, string hex)
+        {
+            if (!material.HasProperty("_EmissionColor"))
+            {
+                return;
+            }
+
+            var key = (material, "_EmissionColor");
+
+            if (string.IsNullOrWhiteSpace(hex))
+            {
+                if (OriginalFurTints.TryGetValue(key, out var originalEmission))
+                {
+                    material.SetColor("_EmissionColor", originalEmission);
+                    material.DisableKeyword("_EMISSION");
+                    WriteToPropertyBlock(renderer, materialIndex, null, null, "_EmissionColor", originalEmission);
+                    Debug($"Fur: restored '{material.name}' _EmissionColor to original.");
+                }
+
+                return;
+            }
+
+            if (!TryParseColor(hex, out var color))
+            {
+                return; // already warned by the texture path
+            }
+
+            if (!OriginalFurTints.ContainsKey(key))
+            {
+                OriginalFurTints[key] = material.GetColor("_EmissionColor");
+            }
+
+            var strength = CatColorProbePlugin.FurGlow.Value;
+            if (strength <= 0f)
+            {
+                material.SetColor("_EmissionColor", OriginalFurTints[key]);
+                material.DisableKeyword("_EMISSION");
+                WriteToPropertyBlock(renderer, materialIndex, null, null, "_EmissionColor", OriginalFurTints[key]);
+                return;
+            }
+
+            var emission = color * strength;
+            material.EnableKeyword("_EMISSION");
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            material.SetColor("_EmissionColor", emission);
+            WriteToPropertyBlock(renderer, materialIndex, null, null, "_EmissionColor", emission);
+            Debug($"Fur: set '{material.name}' _EmissionColor to {emission} (glow {strength}).");
+        }
+
+        /// <summary>
+        /// Writes through the renderer's MaterialPropertyBlock rather than the Material itself.
+        /// This is the fix for the long-running "the log says it applied but nothing changes"
+        /// problem: the game's own ShaderCustomizationModifier.Apply() sets a
+        /// MaterialPropertyBlock on these renderers (the cat body has a CustomizationTargets
+        /// node, so it runs here), and a property block overrides the material's own values at
+        /// draw time. Every material.SetTexture/SetColor call this mod made was therefore
+        /// invisible whenever a block was present - correctly stored, never rendered.
+        /// The block is read-modify-written per material index, exactly as the game does it, so
+        /// any properties the game set in the same block are preserved rather than clobbered.
+        /// </summary>
+        private static void ApplyFurTextureSlot(
+            Renderer renderer, int materialIndex, Material material, string texProperty, string tintProperty, string hex)
+        {
+            var key = (material, texProperty);
+
+            if (string.IsNullOrWhiteSpace(hex))
+            {
+                if (OriginalFurTextures.TryGetValue(key, out var originalMap))
+                {
+                    material.SetTexture(texProperty, originalMap);
+                    if (tintProperty != null && OriginalFurTints.TryGetValue(key, out var originalTint))
+                    {
+                        material.SetColor(tintProperty, originalTint);
+                    }
+
+                    WriteToPropertyBlock(renderer, materialIndex, texProperty, originalMap, tintProperty,
+                        OriginalFurTints.TryGetValue(key, out var tint) ? tint : (Color?)null);
+                    Debug($"Fur: restored '{material.name}' {texProperty} to original.");
+                }
+
+                return;
+            }
+
+            if (!TryParseColor(hex, out var color))
+            {
+                CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] FurColor '{hex}' is not a valid colour.");
+                return;
+            }
+
+            if (!OriginalFurTextures.ContainsKey(key))
+            {
+                OriginalFurTextures[key] = material.GetTexture(texProperty);
+                if (tintProperty != null)
+                {
+                    OriginalFurTints[key] = material.GetColor(tintProperty);
+                }
+            }
+
+            var recolored = TextureRecolor.GetOrBuild(
+                OriginalFurTextures[key], hex, color, brightnessFloor: CatColorProbePlugin.RecolorBrightnessFloor.Value);
+
+            // Set both: the material (harmless, and correct if no block is ever present) and the
+            // property block (what actually wins at draw time when the game has set one).
+            material.SetTexture(texProperty, recolored);
+            // The regenerated texture already encodes the target colour via source luminance -
+            // the paired tint multiplier needs to be neutral (white) or it would
+            // multiply-darken the regenerated result the same way the old flat-tint approach
+            // did. _Atlas has no paired tint property, hence the null check.
+            if (tintProperty != null)
+            {
+                material.SetColor(tintProperty, Color.white);
+            }
+
+            WriteToPropertyBlock(renderer, materialIndex, texProperty, recolored, tintProperty, Color.white);
+            Debug($"Fur: regenerated '{material.name}' {texProperty} toward {color} (parsed from '{hex}').");
+        }
+
+        private static void WriteToPropertyBlock(
+            Renderer renderer, int materialIndex, string texProperty, Texture texture, string tintProperty, Color? tint)
+        {
+            if (renderer == null)
+            {
+                return;
+            }
+
+            var block = new MaterialPropertyBlock();
+            if (renderer.HasPropertyBlock())
+            {
+                renderer.GetPropertyBlock(block, materialIndex);
+            }
+
+            // texProperty is null for colour-only writes (e.g. emission), texture is null when
+            // there's nothing cached to restore - either way there's no texture to set.
+            if (texProperty != null && texture != null)
+            {
+                block.SetTexture(texProperty, texture);
+            }
+
+            if (tintProperty != null && tint.HasValue)
+            {
+                block.SetColor(tintProperty, tint.Value);
+            }
+
+            renderer.SetPropertyBlock(block, materialIndex);
+        }
+
+        private static void ApplyEyeColor(Renderer renderer, string hex)
+        {
+            var materials = renderer.materials;
+            for (var materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+            {
+                var material = materials[materialIndex];
+                if (material == null || !material.HasProperty("_Atlas"))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(hex))
+                {
+                    if (OriginalEyeAtlases.TryGetValue(material, out var originalAtlas))
+                    {
+                        material.SetTexture("_Atlas", originalAtlas);
+                        WriteToPropertyBlock(renderer, materialIndex, "_Atlas", originalAtlas, null, null);
+                        Debug($"Eyes: restored '{material.name}' _Atlas to '{(originalAtlas != null ? originalAtlas.name : "null")}'.");
+                    }
+
+                    continue;
+                }
+
+                if (!TryParseColor(hex, out var color))
+                {
+                    CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] EyeColor '{hex}' is not a valid colour.");
+                    continue;
+                }
+
+                if (!OriginalEyeAtlases.ContainsKey(material))
+                {
+                    OriginalEyeAtlases[material] = material.GetTexture("_Atlas");
+                }
+
+                var threshold = CatColorProbePlugin.EyeHighlightThreshold.Value;
+                Color? pupilColor = null;
+                var pupilHex = CatColorProbePlugin.PupilColor.Value;
+                if (!string.IsNullOrWhiteSpace(pupilHex))
+                {
+                    if (TryParseColor(pupilHex, out var parsedPupilColor))
+                    {
+                        pupilColor = parsedPupilColor;
+                    }
+                    else
+                    {
+                        CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] PupilColor '{pupilHex}' is not a valid colour.");
+                    }
+                }
+
+                var floor = CatColorProbePlugin.RecolorBrightnessFloor.Value;
+                var recolored = TextureRecolor.GetOrBuild(OriginalEyeAtlases[material], hex, color, threshold, pupilColor, floor);
+                material.SetTexture("_Atlas", recolored);
+                WriteToPropertyBlock(renderer, materialIndex, "_Atlas", recolored, null, null);
+                Debug($"Eyes: regenerated '{material.name}' _Atlas toward {color} (parsed from '{hex}'), " +
+                      $"pixels >= {threshold} luminance -> {(pupilColor.HasValue ? pupilColor.Value.ToString() : "left untouched")}.");
+            }
+        }
+
+        /// <summary>
+        /// HSV hue/saturation swap, keeping each property's own original value - correct for HDR
+        /// colours too (Color.RGBToHSV/HSVToRGB don't clamp to [0,1], so a value of 30+ round-trips
+        /// fine), which matters here since additive particle emission commonly runs well above 1.0.
+        /// No texture regeneration needed - this is a plain Color property, the TrueColors-style
+        /// case that was never the hard part.
+        /// </summary>
+        private static void ApplyAuraColor(Renderer renderer, string hex)
+        {
+            foreach (var material in renderer.materials)
+            {
+                if (material == null)
+                {
+                    continue;
+                }
+
+                foreach (var property in GlowColorProperties)
+                {
+                    if (!material.HasProperty(property))
+                    {
+                        continue;
+                    }
+
+                    var key = (material, property);
+
+                    if (string.IsNullOrWhiteSpace(hex))
+                    {
+                        if (OriginalAuraColors.TryGetValue(key, out var original))
+                        {
+                            material.SetColor(property, original);
+                            Debug($"Aura: restored '{material.name}' {property} to original.");
+                        }
+
+                        continue;
+                    }
+
+                    if (!TryParseColor(hex, out var color))
+                    {
+                        CatColorProbePlugin.Log.LogWarning($"[CatColorProbe] AuraColor '{hex}' is not a valid colour.");
+                        continue;
+                    }
+
+                    if (!OriginalAuraColors.ContainsKey(key))
+                    {
+                        OriginalAuraColors[key] = material.GetColor(property);
+                    }
+
+                    Color.RGBToHSV(color, out var targetH, out var targetS, out _);
+                    Color.RGBToHSV(OriginalAuraColors[key], out _, out _, out var originalV);
+                    var recolored = Color.HSVToRGB(targetH, targetS, originalV, hdr: true);
+                    recolored.a = OriginalAuraColors[key].a;
+                    material.SetColor(property, recolored);
+                    Debug($"Aura: set '{material.name}' {property} to {recolored} (hue/sat from '{hex}', original brightness kept).");
+                }
+            }
+        }
+
+        private static bool TryParseColor(string value, out Color color)
+        {
+            if (ColorUtility.TryParseHtmlString(value, out color))
+            {
+                return true;
+            }
+
+            return !value.StartsWith("#") && ColorUtility.TryParseHtmlString("#" + value, out color);
+        }
+    }
+}
