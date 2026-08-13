@@ -47,6 +47,15 @@ namespace CatColorProbe
         private Action onClick;
         private bool hovered;
 
+        // The colour plate's transform (the visible circle). It is a child of the widget root and
+        // does not fill it - the widget reserves vertical space - so overlays like the custom tile's
+        // "+" must be centred on THIS, not on the swatch root, or they sit off-centre. Captured
+        // before the ColorSegmentView component may be destroyed; the GameObject and its Image
+        // survive that, so the transform stays valid.
+        private Transform plateTransform;
+
+        internal Transform PlateTransform => plateTransform;
+
         internal static bool IsAvailable => FindTemplate() != null;
 
         private static GameObject FindTemplate()
@@ -135,6 +144,7 @@ namespace CatColorProbe
             if (widget != null)
             {
                 colorSegment = ColorSegmentRef(widget);
+                plateTransform = colorSegment != null ? colorSegment.transform : null;
                 frame = FrameWidgetRef(widget);
                 frameColorable = FrameColorableRef(widget);
                 appliedVisual = AppliedVisualRef(widget);

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using BepInEx.Configuration;
 using Chicken.Utilities;
 using HarmonyLib;
 using UnityEngine;
@@ -45,6 +46,23 @@ namespace CatColorProbe
         // possible. Cleared when the screen closes, since the preview rig itself is torn down.
         private static BodyViewAsset catBodyInstance;
 
+        // Live-preview support: a swatch pick applies immediately (so the cat updates as you browse),
+        // but is only KEPT if the player presses Confirm. Snapshot the colour config when the
+        // wardrobe opens and restore it on close-without-confirm - the same revert-on-cancel the
+        // game gives its own try-on clothing.
+        private static string[] colorSnapshot;
+        private static bool customizationsConfirmed;
+
+        private static ConfigEntry<string>[] ManagedColors() => new[]
+        {
+            CatColorProbePlugin.FurColor,
+            CatColorProbePlugin.WhiskerColor,
+            CatColorProbePlugin.EyeColor,
+            CatColorProbePlugin.PupilColor,
+            CatColorProbePlugin.EyeHighlightColor,
+            CatColorProbePlugin.AuraColor,
+        };
+
         [HarmonyPostfix]
         private static void Postfix(WardrobeCustomizationScreen __instance)
         {
@@ -68,6 +86,15 @@ namespace CatColorProbe
                 // new item needs the widget rebuilt to appear. If the tab doesn't show up in-game,
                 // this is the first thing to suspect.
                 bumperMenu.Show();
+
+                // Snapshot the cat colours now (before any pick) so picks are a live preview that
+                // reverts unless Confirm is pressed. OnCustomizationsConfirmed fires when the
+                // screen's Confirm button is clicked; its Signal lives on this screen instance and
+                // dies with it, so subscribing per-open needs no explicit unsubscribe.
+                var colors = ManagedColors();
+                colorSnapshot = colors.Select(c => c.Value).ToArray();
+                customizationsConfirmed = false;
+                __instance.OnCustomizationsConfirmed.AddListener(HandleCustomizationsConfirmed);
 
                 CatColorProbePlugin.Log.LogInfo("[CatColorProbe] Wardrobe: added the Cat Form tab.");
             }
@@ -328,11 +355,60 @@ namespace CatColorProbe
         [HarmonyPostfix]
         private static void ClearCachedBody()
         {
+            RevertUnlessConfirmed();
             CatFormColorPanel.Destroy();
             PreviewBloomSuppressor.Restore();
             hiddenCategoryObjects.Clear(); // the screen and its Content are torn down with it
             catBodyInstance = null;
             activeScreen = null;
+        }
+
+        private static void HandleCustomizationsConfirmed()
+        {
+            customizationsConfirmed = true;
+        }
+
+        /// <summary>
+        /// Restores the colour snapshot taken when the wardrobe opened, unless the player pressed
+        /// Confirm. Writing a ConfigEntry.Value raises SettingChanged, which reapplies colours to the
+        /// live player - so this reverts the world cat as well as discarding the preview picks. A
+        /// no-op when nothing changed or when confirmed.
+        /// </summary>
+        private static void RevertUnlessConfirmed()
+        {
+            try
+            {
+                if (customizationsConfirmed || colorSnapshot == null)
+                {
+                    return;
+                }
+
+                var colors = ManagedColors();
+                var reverted = 0;
+                for (var i = 0; i < colors.Length && i < colorSnapshot.Length; i++)
+                {
+                    if (colors[i] != null && colors[i].Value != colorSnapshot[i])
+                    {
+                        colors[i].Value = colorSnapshot[i];
+                        reverted++;
+                    }
+                }
+
+                if (reverted > 0)
+                {
+                    CatColorProbePlugin.Log.LogInfo(
+                        $"[CatColorProbe] Wardrobe: reverted {reverted} colour(s) - closed without confirming.");
+                }
+            }
+            catch (Exception e)
+            {
+                CatColorProbePlugin.Log.LogError($"[CatColorProbe] Wardrobe: colour revert failed: {e}");
+            }
+            finally
+            {
+                colorSnapshot = null;
+                customizationsConfirmed = false;
+            }
         }
     }
 }

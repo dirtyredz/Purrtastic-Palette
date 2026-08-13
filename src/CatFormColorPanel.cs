@@ -285,7 +285,9 @@ namespace CatColorProbe
                 if (cloned != null)
                 {
                     ClonedSwatches.Add(cloned);
-                    AddCaption(cloned.transform, "+");
+                    // Centre the "+" on the colour plate (the visible circle), not the widget root -
+                    // the root reserves extra height, so centring on it puts the "+" off-centre.
+                    AddCaption(cloned.PlateTransform != null ? cloned.PlateTransform : cloned.transform, "+");
                     return;
                 }
             }
