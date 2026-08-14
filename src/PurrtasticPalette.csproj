@@ -71,10 +71,6 @@
       <Private>false</Private>
     </Reference>
 
-    <Reference Include="Unity.Collections">
-      <HintPath>$(MoonlightPeaksManagedPath)\Unity.Collections.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
 
     <Reference Include="Vampire.Runtime">
       <HintPath>$(MoonlightPeaksManagedPath)\Vampire.Runtime.dll</HintPath>

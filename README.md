@@ -48,12 +48,13 @@ within a centred circle since the tab is a diamond); without one, a generated pa
 ## Status
 
 Working and confirmed in-game: all six colours, and the wardrobe tab (preview, swatches, picker,
-decorated headers, live-preview with revert-on-cancel, paw tab icon, stable across leaving and
-re-entering the mirror). Not published. Renamed from its diagnostic-era name `CatColorProbe` to
-**Purrtastic Palette** (plugin GUID `com.dirtyredz.moonlightpeaks.purrtasticpalette`); the source
-directory is still `mods/CatColorProbe`. It is the cat entry in a themed set with the planned
-Fangtastic Palette (bat) and Fintastic Palette (mermaid) mods. The F7 probe is a dev tool kept in;
-strip it before any public release.
+decorated headers, live-preview with revert-on-cancel, paw tab icon, ownership-gated, stable across
+leaving and re-entering the mirror). Prepared for a **1.0.0** release: renamed from its
+diagnostic-era name `CatColorProbe` to **Purrtastic Palette** (plugin GUID
+`com.dirtyredz.moonlightpeaks.purrtasticpalette`; the source directory is still `mods/CatColorProbe`),
+dev tools stripped, packaging in `pack.ps1` / `RELEASING.md`. The cat entry in a themed set with the
+planned Fangtastic Palette (bat) and Fintastic Palette (mermaid) mods. Nexus description and
+screenshots still to do.
 
 ## How it works
 
@@ -118,7 +119,7 @@ call was stored correctly and never rendered. This cost the longest stretch of t
 said "applied" every frame while nothing changed on screen. Property blocks are read-modify-written
 per material index, the same way the game does it, so anything the game set is preserved.
 
-**Something reverts the fur.** Colours are reapplied every frame from `ProbeController.Update` for
+**Something reverts the fur.** Colours are reapplied every frame from `CatColorReapplier` for
 this reason. The eyes are deliberately *excluded* from that loop — they showed no reversion, and
 putting them in it made them flicker and wash out, the signature of fighting another writer at
 matched frequency rather than winning.
@@ -133,24 +134,12 @@ don't rebuild it without new evidence.
 brightness floor is 1.0). That looks correct rather than flat because the body's shading comes
 from real-time lighting and its normal map, not from the texture.
 
-## The probe
+## History
 
-`ProbeKey` (default F7) is a developer tool, kept because it is how every finding above was made:
-
-- dumps every renderer under the current form body, its materials, and **all** shader properties
-  with values — not just colours
-- reports `HasPropertyBlock` per renderer, which is what identified the property-block problem
-- exports source textures to `BepInEx/config/PurrtasticPalette/textures/` as PNG, using the same
-  read path as the recolouring so non-readable textures work
-- `ForceTestColor` additionally forces every colour property to magenta, to see which ones are
-  actually wired to anything
-
-`GiveFormsKey` (default Home) grants all three forms on a save that has not unlocked them.
-
-The eye-mesh UV dump is the one part that does not work: the mesh is not readable, and
-`Mesh.AcquireReadOnlyMeshData` throws on it too. It is wrapped in a try/catch because when it
-first threw, it aborted the whole probe and silently truncated the log. Solving it would allow
-UV-based region masking instead of colour-based.
+Grew out of a diagnostic ("is the form's colour a shader property or baked into a texture?"),
+which is where the old `CatColorProbe` name came from. The developer probe (an F7 renderer/material
+dump, texture export, and a form-grant key) drove every finding above and was **removed for the
+1.0.0 release**; it lives in git history if the sibling bat/mermaid mods need it again.
 
 ## Reusable findings
 

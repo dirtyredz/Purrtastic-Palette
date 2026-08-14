@@ -19,8 +19,8 @@ namespace PurrtasticPalette
     [HarmonyPatch(typeof(FormToolView<CatToolAsset>), "HandleEnterVisuallySwitchedBodyViews")]
     internal static class CatColorPatch
     {
-        // Confirmed by probing (see mods/PurrtasticPalette/src/ProbeController.cs and the research
-        // that led here): the fur's SkinnedMeshRenderer carries two materials - "HellKitten01"
+        // Confirmed by probing the running body (the diagnostic this mod grew out of): the fur's
+        // SkinnedMeshRenderer carries two materials - "HellKitten01"
         // (URP/Lit, texture on _BaseMap) and "GradientAtlas" (the same Game/Atlas/Atlas shader
         // the eyes use, texture on _Atlas). Regenerating only HellKitten01's _BaseMap produced
         // zero visible change across five very different test colours (including cyan and
@@ -110,25 +110,9 @@ namespace PurrtasticPalette
         private static readonly Dictionary<(Material Material, string Property), Color> OriginalAuraColors =
             new Dictionary<(Material, string), Color>();
 
-        /// <summary>
-        /// Looks up the pristine, never-recoloured texture for a material+property, if this mod
-        /// has ever overridden it - used by ProbeController's texture export so pressing F7 while
-        /// FurColor/EyeColor are already set exports the real source art instead of re-exporting
-        /// our own regenerated result under a misleadingly "original-looking" filename.
-        /// </summary>
-        internal static bool TryGetOriginalTexture(Material material, string property, out Texture original)
-        {
-            if (property == "_Atlas" && OriginalEyeAtlases.TryGetValue(material, out original))
-            {
-                return true;
-            }
-
-            return OriginalFurTextures.TryGetValue((material, property), out original);
-        }
-
-        // Suppresses Debug() while the periodic reapply safety net (see ProbeController.Update)
-        // runs, so a once-a-second background call doesn't flood LogOutput.log the same way an
-        // equip or a config edit legitimately should.
+        // Suppresses Debug() while the every-frame reapply safety net (see CatColorReapplier)
+        // runs, so a background call doesn't flood LogOutput.log the same way an equip or a config
+        // edit legitimately should.
         private static bool suppressLogging;
 
         [HarmonyPostfix]
@@ -145,7 +129,7 @@ namespace PurrtasticPalette
         /// with it). That's the signature of us fighting something else at matched frequency
         /// rather than reliably winning against it, so eyes are back to single-shot: applied by
         /// the Harmony postfix on equip and by Config.SettingChanged on a config edit, but not
-        /// from ProbeController's per-frame safety net (which passes includeEyes: false).
+        /// from CatColorReapplier's per-frame safety net (which passes includeEyes: false).
         /// </param>
         internal static void ApplyCatColors(bool logVerbose = true, bool includeEyes = true)
         {

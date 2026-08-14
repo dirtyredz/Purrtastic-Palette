@@ -179,10 +179,9 @@ namespace PurrtasticPalette
             return result;
         }
 
-        // internal, not private: ProbeController's texture-export reuses this same robust
-        // (Read/Write-flag-independent) read path to save the eyes' and fur's raw source
-        // textures to disk for visual inspection - see ExportTextureIfInteresting.
-        internal static Color[] ReadPixelsRobust(Texture source, int width, int height)
+        // A read path that ignores the source texture's Read/Write flag (all of the game's shipped
+        // textures have it off): blit into a temporary RenderTexture and ReadPixels from that.
+        private static Color[] ReadPixelsRobust(Texture source, int width, int height)
         {
             var rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
             var previousActive = RenderTexture.active;
