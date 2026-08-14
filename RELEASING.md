@@ -9,8 +9,8 @@ Repo-wide rules live at the root; this file only covers what is specific to this
   [14-description-review.md](../../14-description-review.md), [15-page-style.md](../../15-page-style.md)
 
 The first published version is **1.0.0**; bump only when publishing, one CHANGELOG entry per
-release. The source directory is `mods/CatColorProbe` for history reasons; the shipped mod,
-assembly, GUID and config folder are all **PurrtasticPalette**.
+release. The source directory, shipped mod, assembly, GUID and config folder are all
+**PurrtasticPalette**.
 
 ## Build a release
 

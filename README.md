@@ -51,7 +51,7 @@ Working and confirmed in-game: all six colours, and the wardrobe tab (preview, s
 decorated headers, live-preview with revert-on-cancel, paw tab icon, ownership-gated, stable across
 leaving and re-entering the mirror). Prepared for a **1.0.0** release: renamed from its
 diagnostic-era name `CatColorProbe` to **Purrtastic Palette** (plugin GUID
-`com.dirtyredz.moonlightpeaks.purrtasticpalette`; the source directory is still `mods/CatColorProbe`),
+`com.dirtyredz.moonlightpeaks.purrtasticpalette`; the source directory is `mods/PurrtasticPalette`),
 dev tools stripped, packaging in `pack.ps1` / `RELEASING.md`. The cat entry in a themed set with the
 planned Fangtastic Palette (bat) and Fintastic Palette (mermaid) mods. Nexus description and
 screenshots still to do.

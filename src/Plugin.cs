@@ -15,7 +15,7 @@ namespace PurrtasticPalette
     ///
     /// Began as a diagnostic (answering "is the form body's colour a shader property or baked into
     /// a texture?"), which is where its old CatColorProbe name came from. See
-    /// mods/CatColorProbe/README.md for the findings and 16-recolouring-characters.md at the repo
+    /// mods/PurrtasticPalette/README.md for the findings and 16-recolouring-characters.md at the repo
     /// root for the parts that generalise to other mods.
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
