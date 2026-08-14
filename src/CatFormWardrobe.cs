@@ -63,6 +63,37 @@ namespace PurrtasticPalette
             PurrtasticPalettePlugin.AuraColor,
         };
 
+        /// <summary>
+        /// Whether the player owns Cat Form. Forms are ItemAssets whose ToolAddon is a form tool
+        /// (CatToolAsset here), kept in GameInventory's Forms inventory; Contains routes the item to
+        /// that inventory. Returns false if the inventory or item can't be reached, so an unknown
+        /// state hides the tab rather than showing it wrongly.
+        /// </summary>
+        private static bool PlayerOwnsCatForm()
+        {
+            try
+            {
+                if (!MonoBehaviourSingleton<GameInventory>.Exists)
+                {
+                    return false;
+                }
+
+                var catItem = Asset.GetAll<ItemAsset>()
+                    .FirstOrDefault(x => x != null && x.ToolAddon is CatToolAsset);
+                if (catItem == null)
+                {
+                    return false;
+                }
+
+                return MonoBehaviourSingleton<GameInventory>.Instance.Contains(new ItemEntry(catItem));
+            }
+            catch (Exception e)
+            {
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: Cat Form ownership check failed: {e}");
+                return false;
+            }
+        }
+
         [HarmonyPostfix]
         private static void Postfix(WardrobeCustomizationScreen __instance)
         {
@@ -73,6 +104,15 @@ namespace PurrtasticPalette
                 if (bumperMenu == null)
                 {
                     PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no bumperMenuWidget found - cannot add the Cat Form tab.");
+                    return;
+                }
+
+                // Only offer the tab once the player actually owns Cat Form - recolouring a form you
+                // cannot turn into makes no sense, and the tab would otherwise show from the very
+                // first mirror use. The widget has no "disabled" state, so gate by not adding it.
+                if (!PlayerOwnsCatForm())
+                {
+                    PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: Cat Form not owned - tab hidden.");
                     return;
                 }
 
@@ -87,6 +127,13 @@ namespace PurrtasticPalette
                 // new item needs the widget rebuilt to appear. If the tab doesn't show up in-game,
                 // this is the first thing to suspect.
                 bumperMenu.Show();
+
+                // Re-select the default tab AFTER adding ours. Show() reflows the strip and refreshes
+                // the scroll selector but doesn't re-run the initial selection, so with enough tabs
+                // to overflow the strip it stays centred with the first (selected) tab faded at the
+                // edge. SelectDefaultMenu re-selects the first tab, and Show() just primed an instant
+                // scroll, so the strip snaps to show the selected tab properly.
+                bumperMenu.SelectDefaultMenu();
 
                 // Snapshot the cat colours now (before any pick) so picks are a live preview that
                 // reverts unless Confirm is pressed. OnCustomizationsConfirmed fires when the
