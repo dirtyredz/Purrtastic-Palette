@@ -24,7 +24,7 @@ namespace PurrtasticPalette
     {
         public const string PluginGuid = "com.dirtyredz.moonlightpeaks.purrtasticpalette";
         public const string PluginName = "Purrtastic Palette";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "1.0.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<KeyboardShortcut> ProbeKey;
