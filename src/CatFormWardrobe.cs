@@ -199,8 +199,20 @@ namespace PurrtasticPalette
                         $"'{humanBody.transform.parent?.name}'.");
                 }
 
+                // Hide EVERY other body in the preview rig, not just the human - a sibling form mod
+                // (e.g. Fangtastic Palette's "Bat Form" tab) instantiates its body into the same
+                // parent and gets no teardown callback when this tab is picked, so switching from it
+                // to Cat otherwise leaves both bodies on screen. Deactivate all BodyViewAssets under
+                // the parent, then show only ours.
+                foreach (var body in humanBody.transform.parent.GetComponentsInChildren<BodyViewAsset>(true))
+                {
+                    if (body != null && body != catBodyInstance)
+                    {
+                        body.gameObject.SetActive(false);
+                    }
+                }
+
                 catBodyInstance.gameObject.SetActive(true);
-                humanBody.gameObject.SetActive(false);
                 HidePreviewVfx();
                 PreviewBloomSuppressor.Suppress();
 

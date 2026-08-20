@@ -24,10 +24,11 @@ namespace PurrtasticPalette
     {
         public const string PluginGuid = "com.dirtyredz.moonlightpeaks.purrtasticpalette";
         public const string PluginName = "Purrtastic Palette";
-        public const string PluginVersion = "1.0.0";
+        public const string PluginVersion = "1.1.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<string> FurColor;
+        internal static ConfigEntry<float> FurIntensity;
         internal static ConfigEntry<string> WhiskerColor;
         internal static ConfigEntry<string> EyeColor;
         internal static ConfigEntry<string> EyeHighlightColor;
@@ -53,6 +54,15 @@ namespace PurrtasticPalette
                     "(\"orange\"). Leave blank to keep the default black.",
                     null,
                     ColorsSection, "ModMenu.Label=Fur Color"));
+
+            FurIntensity = Config.Bind(
+                "Colors", "FurIntensity", 1f,
+                new ConfigDescription(
+                    "How strong the Fur colour is. 1 = full colour blast (the flat vivid look); " +
+                    "lower fades it toward the original fur texture so the coat's own shading shows " +
+                    "through. Only affects the fur, not the whiskers or eyes.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    ColorsSection, "ModMenu.Label=Fur Intensity"));
 
             WhiskerColor = Config.Bind(
                 "Colors", "WhiskerColor", "",

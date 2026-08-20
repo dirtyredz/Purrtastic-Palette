@@ -171,6 +171,10 @@ namespace PurrtasticPalette
             suppressLogging = !logVerbose;
 
             var furColor = PurrtasticPalettePlugin.FurColor.Value;
+            // Fur Intensity: 1 = full recolour, lower fades the fur back toward its original
+            // texture so the coat's own shading shows through. Fur only - the whiskers keep 0
+            // (default), so the slider leaves them untouched.
+            var furOriginalBlend = 1f - Mathf.Clamp01(PurrtasticPalettePlugin.FurIntensity.Value);
             var whiskerColor = PurrtasticPalettePlugin.WhiskerColor.Value;
             var eyeColor = PurrtasticPalettePlugin.EyeColor.Value;
             var auraColor = PurrtasticPalettePlugin.AuraColor.Value;
@@ -229,7 +233,7 @@ namespace PurrtasticPalette
                     if (material.name.StartsWith(BodyMaterialPrefix))
                     {
                         furMatches++;
-                        ApplyFurColor(renderer, materialIndex, material, furColor);
+                        ApplyFurColor(renderer, materialIndex, material, furColor, furOriginalBlend);
                     }
                     else if (material.name.StartsWith(WhiskerMaterialPrefix))
                     {
@@ -257,7 +261,8 @@ namespace PurrtasticPalette
             }
         }
 
-        private static void ApplyFurColor(Renderer renderer, int materialIndex, Material material, string hex)
+        private static void ApplyFurColor(
+            Renderer renderer, int materialIndex, Material material, string hex, float originalBlend = 0f)
         {
             // A material may carry more than one of these slots at once (HellKitten01 has both
             // _BaseMap and _MainTex) - every one present gets regenerated independently, so
@@ -266,7 +271,7 @@ namespace PurrtasticPalette
             {
                 if (material.HasProperty(texProperty))
                 {
-                    ApplyFurTextureSlot(renderer, materialIndex, material, texProperty, tintProperty, hex);
+                    ApplyFurTextureSlot(renderer, materialIndex, material, texProperty, tintProperty, hex, originalBlend);
                 }
             }
         }
@@ -284,7 +289,8 @@ namespace PurrtasticPalette
         /// any properties the game set in the same block are preserved rather than clobbered.
         /// </summary>
         private static void ApplyFurTextureSlot(
-            Renderer renderer, int materialIndex, Material material, string texProperty, string tintProperty, string hex)
+            Renderer renderer, int materialIndex, Material material, string texProperty, string tintProperty, string hex,
+            float originalBlend = 0f)
         {
             var key = (material, texProperty);
 
@@ -327,7 +333,7 @@ namespace PurrtasticPalette
             // through unrecoloured, leaving the coat black.
             var recolored = TextureRecolor.GetOrBuild(
                 OriginalFurTextures[key], hex, color, splitBelowSaturation: -1f,
-                brightnessFloor: FurBrightnessFloor);
+                brightnessFloor: FurBrightnessFloor, originalBlend: originalBlend);
 
             // Set both: the material (harmless, and correct if no block is ever present) and the
             // property block (what actually wins at draw time when the game has set one).

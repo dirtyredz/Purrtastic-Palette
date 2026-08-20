@@ -28,8 +28,8 @@ namespace PurrtasticPalette
     internal static class TextureRecolor
     {
         private static readonly Dictionary<(Texture Source, string Hex, float Threshold, Color? Highlight, float Floor,
-            float PupilSplit, Color? Pupil), Texture2D> Cache =
-            new Dictionary<(Texture, string, float, Color?, float, float, Color?), Texture2D>();
+            float PupilSplit, Color? Pupil, float OriginalBlend), Texture2D> Cache =
+            new Dictionary<(Texture, string, float, Color?, float, float, Color?, float), Texture2D>();
 
         /// <param name="splitBelowSaturation">
         /// Source pixels whose HSV saturation is at or below this are treated as the separate
@@ -77,25 +77,33 @@ namespace PurrtasticPalette
         /// up and still didn't get the vibrancy" result. 0 = no floor, full original shading
         /// range preserved (darkest source pixels can still go near-black).
         /// </param>
+        /// <param name="originalBlend">
+        /// How far each output pixel is faded back toward the ORIGINAL source pixel: 0 keeps the
+        /// full recolour, 1 leaves the texture untouched. This is the Fur Intensity control - a
+        /// lower intensity blends the original coat's own shading/gradient back in so the flat
+        /// recolour looks less uniform. Alpha is always taken from the source. 0 for every other
+        /// caller (eyes), so they're unaffected.
+        /// </param>
         internal static Texture2D GetOrBuild(
             Texture source, string hex, Color target, float splitBelowSaturation = -1f, Color? highlightColor = null,
-            float brightnessFloor = 0f, float splitBelowValue = -1f, Color? pupilColor = null)
+            float brightnessFloor = 0f, float splitBelowValue = -1f, Color? pupilColor = null, float originalBlend = 0f)
         {
-            var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor, splitBelowValue, pupilColor);
+            var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor, splitBelowValue, pupilColor,
+                originalBlend);
             if (Cache.TryGetValue(key, out var cached) && cached != null)
             {
                 return cached;
             }
 
             var result = Build(source, target, hex, splitBelowSaturation, highlightColor, brightnessFloor,
-                splitBelowValue, pupilColor);
+                splitBelowValue, pupilColor, originalBlend);
             Cache[key] = result;
             return result;
         }
 
         private static Texture2D Build(
             Texture source, Color target, string cacheKey, float splitBelowSaturation, Color? highlightColor,
-            float brightnessFloor, float splitBelowValue, Color? pupilColor)
+            float brightnessFloor, float splitBelowValue, Color? pupilColor, float originalBlend)
         {
             var width = source.width;
             var height = source.height;
@@ -166,6 +174,11 @@ namespace PurrtasticPalette
                     recolored.a = src.a;
                     outPixels[i] = recolored;
                 }
+
+                // Fade the recolour back toward the original by originalBlend, so the source's own
+                // shading blends in and the flat tint softens. Uniform across every branch above;
+                // a no-op at originalBlend 0, which is every caller except the fur.
+                outPixels[i] = Overlay(outPixels[i], src, originalBlend);
             }
 
             var result = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: false)
@@ -177,6 +190,20 @@ namespace PurrtasticPalette
             result.SetPixels(outPixels);
             result.Apply();
             return result;
+        }
+
+        // Blends a recoloured pixel back toward the original by `originalBlend` (0 = keep the full
+        // recolour, 1 = original untouched), so the source texture's gradients soften the flat tint.
+        private static Color Overlay(Color recolored, Color src, float originalBlend)
+        {
+            if (originalBlend <= 0f)
+            {
+                return recolored;
+            }
+
+            var blended = Color.Lerp(recolored, src, originalBlend);
+            blended.a = src.a;
+            return blended;
         }
 
         // A read path that ignores the source texture's Read/Write flag (all of the game's shipped
