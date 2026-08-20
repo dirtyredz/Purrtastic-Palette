@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0 — 2026-08-20
+
+Adds a **Fur Intensity** slider, and fixes a preview clash with sibling form mods.
+
+- **Fur Intensity** — a new slider in the Cat Form wardrobe tab (also under **Colors** in Mod Nook
+  / the `.cfg`). At **1.0** the fur is the full vivid recolour, as before; turn it down to fade the
+  recolour back toward the original fur texture, so the coat's own shading and gradient show
+  through and the colour reads less flat. Affects the **fur only** — whiskers, eyes and the sparkle
+  trail are untouched.
+- **Fixed:** switching to the Cat Form tab from another recolour mod's form tab in the same mirror
+  (e.g. Fangtastic Palette's Bat Form) could leave both bodies on screen in the preview at once.
+  The preview now hides every other form's body, not just the human's.
+
 ## 1.0.0 — 2026-08-13
 
 First release. Recolour Cat Form — the whole cat, not just a tint.

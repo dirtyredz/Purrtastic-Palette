@@ -18,7 +18,7 @@ direction first — they all still apply.
 | **Name** | Purrtastic Palette |
 | **Summary** (short, shows in listings) | your cat form is always the same little Hellkitten — recolour its fur, eyes, whiskers and sparkle trail, live, from a picker in the mirror |
 | **Category** | Confirm against the game's list. Best fit is a visual/cosmetic category (where recolour and reskin mods sit); fall back to Gameplay if there is no cosmetic one. |
-| **Version** | 1.0.0 |
+| **Version** | 1.1.0 |
 | **Nexus page** | *(new — no mod id yet)* |
 | **Requirements** | BepInEx 5 (win_x64), 5.4.23.5 or newer — required |
 | | [Mod Nook](https://www.nexusmods.com/moonlightpeaks/mods/127) — optional, for in-game settings |
@@ -58,6 +58,7 @@ Nothing new is written to your save — only your own colour settings.
 ### Main features
 
 - Recolour six parts of Cat Form: fur, whiskers, iris, pupil, the bright eye glint, and the sparkle trail
+- A Fur Intensity slider to fade the fur colour toward the coat's own shading, for a softer, less flat look
 - A Cat Form tab in the mirror's wardrobe, with a live preview of your cat
 - Eleven preset swatches per part, plus a + tile that opens a full RGB colour picker
 - Colours preview live and only stick on Confirm — leave without confirming and they revert
@@ -146,6 +147,13 @@ can never disagree. Nothing here needs it; it just makes the mod easier to live 
 
 Player-facing. Describe the **symptom**, not the cause — the repo README names the Harmony patches.
 
+### 1.1.0
+
+```
+- New Fur Intensity slider: turn it down to let your cat's own fur shading show through the colour, for a softer, less flat look. Leave it at the top for the full vivid recolour, same as before.
+- Fixed the cat and another form's body both showing at once in the mirror preview when switching between form tabs (with sibling recolour mods like Fangtastic Palette).
+```
+
 ### 1.0.0
 
 ```
@@ -203,4 +211,4 @@ palette-and-swatches motif, and the paw-crest banner all match the tab icon in g
 - List BepInEx as **required** and Mod Nook / Mod Menu as **optional**.
 - Set the Nexus permissions to agree with the MIT licence — see [RELEASING.md](RELEASING.md).
 - Run the [RELEASING.md](RELEASING.md) checklist, then `pack.ps1`, and upload
-  `dist/PurrtasticPalette-1.0.0.zip`.
+  `dist/PurrtasticPalette-1.1.0.zip`.

@@ -41,6 +41,7 @@ In the mirror the colours are a live preview: they change the cat as you browse,
 [size=5][color=#F7D994]✨  Main features[/color][/size]
 [list]
 [*][b]Six parts, recoloured[/b] — fur, whiskers, iris, pupil, the bright eye glint, and the running sparkle trail
+[*][b]A Fur Intensity slider[/b] — fade the fur colour toward the coat's own shading for a softer, less flat look
 [*][b]A Cat Form tab in the mirror[/b], with a live preview of your cat
 [*][b]Preset swatches per part, plus a + tile[/b] that opens a full RGB colour picker
 [*][b]Live preview[/b] — colours only stick on Confirm; leave without confirming and they revert
