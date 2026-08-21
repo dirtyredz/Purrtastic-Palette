@@ -4,6 +4,9 @@ Recolours Cat Form: body, whiskers, iris, pupil, eye highlight, and the sparkle 
 to set the colours - config values, and a **Cat Form tab in the mirror's wardrobe** with a live
 preview and swatch pickers.
 
+**Status:** 🚀 **Published** — v1.1.0 live on Nexus as
+[mod 142](https://www.nexusmods.com/moonlightpeaks/mods/142).
+
 Config settings live under **Colors** in Mod Nook (or
 `BepInEx/config/com.dirtyredz.moonlightpeaks.purrtasticpalette.cfg`). Every value is a hex code
 (`#FF8800`) or an HTML colour name (`orange`); blank means "leave vanilla". Changes apply
