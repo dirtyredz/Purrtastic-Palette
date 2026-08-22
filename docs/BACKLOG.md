@@ -8,7 +8,7 @@ pass. Each is tagged **[pure move]** (behaviour-neutral relocation, build-verifi
 DLLs and dotnet are present) or **[verify in-game]** (changes dispatch/tie-break/cache semantics; the
 mod is published and the game can't be launched from this environment, so test before shipping).
 
-## Done in the review pass (all build-verified green, behaviour-neutral)
+## Done in the review pass (build-verified, behaviour-neutral, confirmed in-game 2026-08-22)
 - ✅ **Removed dead code** — `Templates.CloneButton` + `SetLabel` (~48 lines, no live caller; Codex-flagged).
 - ✅ **Extracted `SliderRow.cs`** — the Fur-Intensity slider left `CatFormColorPanel` (630→492 lines).
 - ✅ **Extracted `ColorParsing.cs`** from `CatColorPatch` (518→489). `CatFormColorPanel.ParseOr` left

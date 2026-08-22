@@ -101,7 +101,8 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   **backlogged until a change can be tested in-game** — a deliberate preserve-verified-behaviour
   tradeoff, not an oversight.
 
-**Fixed in this review pass** (all build-verified green; behaviour-neutral):
+**Fixed in this review pass** (all build-verified green, behaviour-neutral, and **confirmed in-game
+2026-08-22** — wardrobe slider, swatches, and revert-on-cancel all working):
 - ✅ **Removed dead code** — `Templates.CloneButton` + its only-caller-is-dead helper `SetLabel`
   (~48 lines, no callers; Codex-flagged).
 - ✅ **Extracted `SliderRow`** — the Fur-Intensity slider (`AddSliderRow` + `ThinCenteredBar`) left
