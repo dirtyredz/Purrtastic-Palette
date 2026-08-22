@@ -31,44 +31,29 @@ namespace PurrtasticPalette
                 return templateBar;
             }
 
-            try
+            var headerField = AccessTools.Field(typeof(CustomizationCategoryListWidget), "headerText");
+            if (headerField == null)
             {
-                var headerField = AccessTools.Field(typeof(CustomizationCategoryListWidget), "headerText");
-                if (headerField == null)
-                {
-                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Header: no headerText field found.");
-                    return null;
-                }
-
-                foreach (var widget in Resources.FindObjectsOfTypeAll<CustomizationCategoryListWidget>())
-                {
-                    if (widget == null)
-                    {
-                        continue;
-                    }
-
-                    if (!(headerField.GetValue(widget) is Component header) || header.transform.parent == null)
-                    {
-                        continue;
-                    }
-
-                    templateBar = header.transform.parent.gameObject;
-                    if (templateBar.scene.IsValid())
-                    {
-                        break;
-                    }
-                }
-
-                PurrtasticPalettePlugin.Log.LogInfo(templateBar != null
-                    ? $"[PurrtasticPalette] Header template: '{templateBar.name}'."
-                    : "[PurrtasticPalette] No header template found - using plain labels.");
-            }
-            catch (Exception e)
-            {
-                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Header template lookup failed: {e}");
-                templateBar = null;
+                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Header: no headerText field found.");
+                return null;
             }
 
+            // The header lives on headerText's parent bar - that bar is what we clone. Prefer a bar
+            // in a live scene, and fall back to the last eligible widget seen (the original loop's
+            // behaviour) when none is scene-valid. The scene check and the result both project
+            // through the same parent, so they stay consistent.
+            GameObject BarOf(CustomizationCategoryListWidget w)
+                => headerField.GetValue(w) is Component header && header.transform.parent != null
+                    ? header.transform.parent.gameObject
+                    : null;
+
+            var owner = GameTemplate.Find<CustomizationCategoryListWidget>(
+                "Header",
+                match: w => BarOf(w) != null,
+                preferred: w => BarOf(w).scene.IsValid(),
+                fallbackLast: true);
+
+            templateBar = owner != null ? BarOf(owner) : null;
             return templateBar;
         }
 

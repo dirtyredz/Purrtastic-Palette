@@ -4,8 +4,6 @@
 // wears the pause-menu's corner decoration. Everything else is unchanged. Fix bugs in both
 // copies. See 10-visual-integration.md.
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using Chicken.UI;
 using TMPro;
 using UnityEngine;
@@ -37,59 +35,20 @@ namespace PurrtasticPalette
             }
             searched = true;
 
-            slider = Find<SliderButton>("SliderButton");
-        }
-
-        /// <summary>
-        /// Resources.FindObjectsOfTypeAll reaches inactive objects and loaded prefabs, not just
-        /// what is on screen - so a widget stays sourceable while its own screen is hidden.
-        /// </summary>
-        private static T Find<T>(string label) where T : Component
-        {
-            try
-            {
-                var found = Resources.FindObjectsOfTypeAll<T>().Where(x => x != null).ToArray();
-
-                // A laid-out scene instance beats a bare prefab: its rect already carries the size
-                // the game gives that row, which is what our layout needs.
-                var template =
-                    found.FirstOrDefault(x => x.gameObject.scene.IsValid() && HasSize(x)) ??
-                    found.FirstOrDefault(x => x.gameObject.scene.IsValid()) ??
-                    found.FirstOrDefault();
-
-                if (template == null)
-                {
-                    PurrtasticPalettePlugin.Log.LogWarning($"No {label} found.");
-                }
-                else
-                {
-                    PurrtasticPalettePlugin.Log.LogInfo($"{label} template: {PathOf(template.transform)}");
-                }
-
-                return template;
-            }
-            catch (Exception e)
-            {
-                PurrtasticPalettePlugin.Log.LogWarning($"{label} lookup failed: {e.Message}");
-                return null;
-            }
+            // A laid-out scene instance beats a bare prefab: its rect already carries the size the
+            // game gives that row, which is what our layout needs. Prefer scene-valid-and-sized,
+            // then scene-valid, then any - and take the first eligible match at each tier.
+            slider = GameTemplate.Find<SliderButton>(
+                "SliderButton",
+                match: _ => true,
+                preferred: x => x.gameObject.scene.IsValid() && HasSize(x),
+                secondary: x => x.gameObject.scene.IsValid());
         }
 
         private static bool HasSize(Component component)
         {
             var rect = component.transform as RectTransform;
             return rect != null && rect.rect.width > 1f && rect.rect.height > 1f;
-        }
-
-        private static string PathOf(Transform transform)
-        {
-            var parts = new List<string>();
-            for (var current = transform; current != null; current = current.parent)
-            {
-                parts.Add(current.name);
-            }
-            parts.Reverse();
-            return string.Join("/", parts);
         }
 
         // ------------------------------------------------------------------ cloning

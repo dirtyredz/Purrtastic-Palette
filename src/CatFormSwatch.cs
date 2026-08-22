@@ -69,43 +69,19 @@ namespace PurrtasticPalette
                 return template;
             }
 
-            try
-            {
-                // CustomizationOptionListWidget renders two ways from one class: a square with an
-                // item icon (glasses, hairstyles) or a colour-filled circle (eye colour, skin
-                // colour). The difference is the serialized displayAssetPreviewColorAsBackground
-                // flag. Only the colour variant is any use here - grabbing the first instance got
-                // a glasses square with no fill. Require the flag, and prefer a real scene
-                // instance over a bare prefab.
-                var found = Resources.FindObjectsOfTypeAll<CustomizationOptionListWidget>();
-                CustomizationOptionListWidget best = null;
-                var colourCandidates = 0;
-                foreach (var w in found)
-                {
-                    if (w == null || !ColorBackgroundRef(w))
-                    {
-                        continue;
-                    }
+            // CustomizationOptionListWidget renders two ways from one class: a square with an item
+            // icon (glasses, hairstyles) or a colour-filled circle (eye colour, skin colour). The
+            // difference is the serialized displayAssetPreviewColorAsBackground flag. Only the colour
+            // variant is any use here - grabbing the first instance got a glasses square with no
+            // fill. Require the flag, prefer a real scene instance, and fall back to the last colour
+            // candidate seen (the original loop's behaviour) when none is scene-valid.
+            var widget = GameTemplate.Find<CustomizationOptionListWidget>(
+                "Colour swatch",
+                match: w => ColorBackgroundRef(w),
+                preferred: w => w.gameObject.scene.IsValid(),
+                fallbackLast: true);
 
-                    colourCandidates++;
-                    best = w;
-                    if (w.gameObject.scene.IsValid())
-                    {
-                        break;
-                    }
-                }
-
-                template = best != null ? best.gameObject : null;
-                PurrtasticPalettePlugin.Log.LogInfo(template != null
-                    ? $"[PurrtasticPalette] Colour swatch template: '{template.name}' ({colourCandidates} colour candidate(s) of {found.Length} total)."
-                    : $"[PurrtasticPalette] No colour swatch template among {found.Length} widget(s) - using drawn swatches.");
-            }
-            catch (Exception e)
-            {
-                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Swatch template lookup failed: {e}");
-                template = null;
-            }
-
+            template = widget != null ? widget.gameObject : null;
             return template;
         }
 
