@@ -17,6 +17,13 @@ mod is published and the game can't be launched from this environment, so test b
 - ✅ **Extracted `PreviewColorSession.cs`** from `CatFormWardrobe` (474→409) — snapshot + revert-on-cancel.
 - ✅ **Deleted stale `HANDOFF.md`** — the completed pre-1.0.0 folder-rename hand-off (mod is published at 1.1.0).
 
+## Done after the review pass (logic-touching, confirmed in-game 2026-08-22)
+- ✅ **Unified template-locate into `GameTemplate.Find<T>`** — absorbed the locate pattern from
+  `Templates.Find`, `CatFormSwatch.FindTemplate`, `HeaderDecoration.FindTemplateBar` into one
+  `GameTemplate.cs`. The three differing tie-break policies are preserved as per-caller predicates
+  (`match`/`preferred`/`secondary`/`fallbackLast`), not flattened; callers keep their own caching +
+  projection. Build-verified and in-game smoke-tested (slider, swatches, decorated headers all locate).
+
 ## P0 — none
 Nothing blocking. The mod ships and works.
 
@@ -25,11 +32,6 @@ Nothing blocking. The mod ships and works.
   instantiate/swap, VFX + bloom suppression) and `WardrobePanelSwap` (hide/restore native rows +
   build/destroy our panel), leaving a thin Harmony host. *Promoted from P2 — Codex judged it already a
   God-controller, not contingent on growth.* — *[verify in-game]*
-- **`GameTemplate.Find<T>(predicate, tieBreak, label)`** to absorb the template-locate pattern in
-  `Templates.Find` (`:47`), `CatFormSwatch.FindTemplate` (`:61`), `HeaderDecoration.FindTemplateBar`
-  (`:24`). The three tie-break policies **differ** (3-tier fallback vs first-scene-valid vs
-  first-then-project-to-parent) — parameterize predicate *and* comparator per caller, or it silently
-  changes which template wins. — *[verify in-game]*
 
 ## P2 — deferred / nice-to-have
 - **Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** (the larger
