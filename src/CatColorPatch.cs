@@ -312,7 +312,7 @@ namespace PurrtasticPalette
                 return;
             }
 
-            if (!TryParseColor(hex, out var color))
+            if (!ColorParsing.TryParse(hex, out var color))
             {
                 PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] FurColor '{hex}' is not a valid colour.");
                 return;
@@ -403,7 +403,7 @@ namespace PurrtasticPalette
                     continue;
                 }
 
-                if (!TryParseColor(hex, out var color))
+                if (!ColorParsing.TryParse(hex, out var color))
                 {
                     PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] EyeColor '{hex}' is not a valid colour.");
                     continue;
@@ -414,8 +414,8 @@ namespace PurrtasticPalette
                     OriginalEyeAtlases[material] = material.GetTexture("_Atlas");
                 }
 
-                var highlightColor = ParseOptionalColor(PurrtasticPalettePlugin.EyeHighlightColor.Value, "EyeHighlightColor");
-                var pupilColor = ParseOptionalColor(PurrtasticPalettePlugin.PupilColor.Value, "PupilColor");
+                var highlightColor = ColorParsing.ParseOptional(PurrtasticPalettePlugin.EyeHighlightColor.Value, "EyeHighlightColor");
+                var pupilColor = ColorParsing.ParseOptional(PurrtasticPalettePlugin.PupilColor.Value, "PupilColor");
 
                 var recolored = TextureRecolor.GetOrBuild(
                     OriginalEyeAtlases[material], hex, color, EyePupilSaturation, highlightColor, EyeBrightnessFloor,
@@ -464,7 +464,7 @@ namespace PurrtasticPalette
                         continue;
                     }
 
-                    if (!TryParseColor(hex, out var color))
+                    if (!ColorParsing.TryParse(hex, out var color))
                     {
                         PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] AuraColor '{hex}' is not a valid colour.");
                         continue;
@@ -485,34 +485,5 @@ namespace PurrtasticPalette
             }
         }
 
-        /// <summary>
-        /// Blank means "leave this region alone" (null), an unparseable value warns once and is
-        /// also treated as leave-alone rather than silently colouring something wrong.
-        /// </summary>
-        private static Color? ParseOptionalColor(string hex, string settingName)
-        {
-            if (string.IsNullOrWhiteSpace(hex))
-            {
-                return null;
-            }
-
-            if (TryParseColor(hex, out var parsed))
-            {
-                return parsed;
-            }
-
-            PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] {settingName} '{hex}' is not a valid colour.");
-            return null;
-        }
-
-        private static bool TryParseColor(string value, out Color color)
-        {
-            if (ColorUtility.TryParseHtmlString(value, out color))
-            {
-                return true;
-            }
-
-            return !value.StartsWith("#") && ColorUtility.TryParseHtmlString("#" + value, out color);
-        }
     }
 }

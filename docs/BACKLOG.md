@@ -8,25 +8,16 @@ pass. Each is tagged **[pure move]** (behaviour-neutral relocation, build-verifi
 DLLs and dotnet are present) or **[verify in-game]** (changes dispatch/tie-break/cache semantics; the
 mod is published and the game can't be launched from this environment, so test before shipping).
 
-## Done in the review pass
-- ✅ **Removed dead code** — `Templates.CloneButton` + `SetLabel` (~48 lines, no live caller;
-  Codex-flagged). Build re-verified green (0 errors).
+## Done in the review pass (all build-verified green, behaviour-neutral)
+- ✅ **Removed dead code** — `Templates.CloneButton` + `SetLabel` (~48 lines, no live caller; Codex-flagged).
+- ✅ **Extracted `SliderRow.cs`** — the Fur-Intensity slider left `CatFormColorPanel` (630→492 lines).
+- ✅ **Extracted `ColorParsing.cs`** from `CatColorPatch` (518→489). `CatFormColorPanel.ParseOr` left
+  untouched (different semantics — unifying it is still backlogged below as logic-touching).
+- ✅ **Extracted `PointerTriggers.cs`** — the byte-identical `AddTrigger` helper, de-duplicated.
+- ✅ **Extracted `PreviewColorSession.cs`** from `CatFormWardrobe` (474→409) — snapshot + revert-on-cancel.
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
-
-## P1 — pure moves (safe to do without in-game verification)
-- **Extract the Fur-Intensity slider from `CatFormColorPanel`** — `AddSliderRow` + `ThinCenteredBar`
-  (~115 lines) → a `SliderRow`/`FloatSliderRow` file. Cleanest seam in the codebase; `CatFormColorPanel`
-  is the largest file (630 lines) and the slider shares nothing with the swatch code. — *[pure move]*
-- **Extract `ColorParsing.cs` from `CatColorPatch`** — `TryParseColor` + `ParseOptionalColor`, pure
-  `string→Color?`, 4 call sites. **Do not** silently fold in `CatFormColorPanel.ParseOr` — it lacks the
-  `#`-retry, so unifying is a behaviour change (that part is [verify in-game]). — *[pure move]*
-- **De-dupe the byte-identical `AddTrigger`** in `CatFormSwatch` (`:233`) and `CatFormColorPanel`
-  (`:538`) into one small `PointerTriggers` helper (optionally also attaching `ScrollForwarder`). — *[pure move]*
-- **Extract `PreviewColorSession` from `CatFormWardrobe`** — colour snapshot + revert-on-cancel
-  (`ManagedColors` `:56`, `colorSnapshot`/`customizationsConfirmed` `:53`, `RevertUnlessConfirmed`
-  `:437`). Pure `ConfigEntry` snapshot/restore, zero GameObject state — fully decoupled. — *[pure move]*
 
 ## P1 — logic-touching (verify in-game before shipping)
 - **Decompose the rest of the `CatFormWardrobe` God-patch** into `CatPreviewController` (body

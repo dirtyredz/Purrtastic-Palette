@@ -33,16 +33,16 @@ files never appear inside the engine or the patch classes. Two nuances the revie
   Patches / bootstrap      Plugin(Awake) · CatColorPatch · CatColorReapplier · CatFormWardrobe(patch)
         │  drives                                    ▲
         ▼                                            │ OnColorChanged delegate, wired by the patch layer
-  Recolour engine          TextureRecolor · (colour parsing + property-block writing, today inside
+  Recolour engine          TextureRecolor · ColorParsing · (property-block writing still inside
         ▲                   CatColorPatch)
         │  reads colours from
-  Wardrobe UI (view)       CatFormColorPanel · CatFormSwatch · ColorPickerPopup · Templates
+  Wardrobe UI (view)       CatFormColorPanel · CatFormSwatch · ColorPickerPopup · Templates · SliderRow
                            + drawing helpers: CircleSprite · PanelSprite · PawSprite · TabIcon
                            · HeaderDecoration · GameFonts · ScrollForwarder · PreviewBloomSuppressor
                            · Palette (UI colours)
 ```
 
-## File-by-file (18 files, ~3.6k lines)
+## File-by-file (22 files, ~3.6k lines)
 
 ### Bootstrap
 | File | Lines | Responsibility |
@@ -53,17 +53,20 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 | File | Lines | Responsibility |
 |---|---|---|
 | [src/TextureRecolor.cs](src/TextureRecolor.cs) | 231 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. |
-| [src/CatColorPatch.cs](src/CatColorPatch.cs) | 518 | The equip-time Harmony patch **and** all apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches, colour parsing. **Largest file; carries several responsibilities — see Structural debt.** |
+| [src/CatColorPatch.cs](src/CatColorPatch.cs) | 489 | The equip-time Harmony patch **and** the apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches. Still the largest engine file — see Structural debt for the remaining strategy seam. |
+| [src/ColorParsing.cs](src/ColorParsing.cs) | 42 | Hex/name → `Color?` parsing, shared by the fur/eye/aura paths. Extracted from `CatColorPatch`. |
 | [src/CatColorReapplier.cs](src/CatColorReapplier.cs) | 30 | Per-frame `Update()` safety net that re-applies fur (not eyes). One job. |
 
 ### Wardrobe UI (the "view")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 474 | Harmony host for 4 wardrobe-screen hooks: ownership gate, tab injection, preview-body swap, VFX hide, category-panel hide/restore, colour snapshot + revert-on-cancel. **God-patch — several concerns, see debt.** |
-| [src/CatFormColorPanel.cs](src/CatFormColorPanel.cs) | 630 | Builds the swatch panel: rows/presets, layout math, selection state, the drawn-swatch fallback shell, **and** the from-scratch Fur-Intensity slider. **Largest UI file; the slider is a separable widget — see debt.** |
-| [src/CatFormSwatch.cs](src/CatFormSwatch.cs) | 240 | One swatch cloned from the game's `CustomizationOptionListWidget` (real frame/checkmark/hover sound). |
+| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 409 | Harmony host for 4 wardrobe-screen hooks: ownership gate, tab injection, preview-body swap, VFX hide, category-panel hide/restore. Still a God-patch (preview rig + panel swap) — see debt. |
+| [src/CatFormColorPanel.cs](src/CatFormColorPanel.cs) | 492 | Builds the swatch panel: rows/presets, layout math, selection state, and the drawn-swatch fallback shell. Hosts a `SliderRow` for Fur Intensity. |
+| [src/SliderRow.cs](src/SliderRow.cs) | 149 | A labelled float slider widget (track/fill/handle), built for the Fur-Intensity row. Extracted from `CatFormColorPanel`. |
+| [src/PreviewColorSession.cs](src/PreviewColorSession.cs) | 86 | The try-on transaction: snapshot colours on open, revert on close-without-Confirm. Pure `ConfigEntry` state. Extracted from `CatFormWardrobe`. |
+| [src/CatFormSwatch.cs](src/CatFormSwatch.cs) | 228 | One swatch cloned from the game's `CustomizationOptionListWidget` (real frame/checkmark/hover sound). |
 | [src/ColorPickerPopup.cs](src/ColorPickerPopup.cs) | 303 | The RGB picker dialog (trimmed port of ModNook's `ColorPicker`). |
-| [src/Templates.cs](src/Templates.cs) | 335 | Game-widget cloning utility (locate → stage inactive → strip localization/wings → place). Ported from ModNook. |
+| [src/Templates.cs](src/Templates.cs) | 288 | Game-widget cloning utility (locate → stage inactive → strip localization/wings → place). Ported from ModNook. |
 
 ### Drawing / asset helpers (small, single-responsibility)
 | File | Lines | Responsibility |
@@ -76,6 +79,7 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 | [src/TabIcon.cs](src/TabIcon.cs) | 70 | Loads a user PNG override, else falls back to `PawSprite`. |
 | [src/CircleSprite.cs](src/CircleSprite.cs) | 54 | Generated white circle sprite (swatch faces, slider handle). |
 | [src/ScrollForwarder.cs](src/ScrollForwarder.cs) | 32 | Forwards mouse-wheel from a swatch's EventTrigger up to the ScrollRect. |
+| [src/PointerTriggers.cs](src/PointerTriggers.cs) | 20 | Shared `EventTrigger` hover/click wiring helper (was duplicated in the panel + swatch). |
 | [src/Palette.cs](src/Palette.cs) | 13 | Two UI colours (label, accent) the mod draws itself. UI-only. |
 
 ## Structural debt
@@ -97,22 +101,17 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   **backlogged until a change can be tested in-game** — a deliberate preserve-verified-behaviour
   tradeoff, not an oversight.
 
-**Fixed in this review pass:**
+**Fixed in this review pass** (all build-verified green; behaviour-neutral):
 - ✅ **Removed dead code** — `Templates.CloneButton` + its only-caller-is-dead helper `SetLabel`
-  (~48 lines, no callers; Codex-flagged). Build re-verified green.
-
-**Backlogged — pure moves (safe, do when convenient):**
-- **[P1] Extract the Fur-Intensity slider from `CatFormColorPanel`** (`AddSliderRow` + `ThinCenteredBar`,
-  ~115 lines) into a `SliderRow` file. Cleanest seam in the codebase; shares nothing with the swatch code.
-- **[P1] Extract `ColorParsing.cs` from `CatColorPatch`** (`TryParseColor` / `ParseOptionalColor`, pure
-  `string→Color?`, 4 call sites). Do **not** silently fold in `CatFormColorPanel.ParseOr` — it has
-  *different* semantics (no `#`-retry); unifying is a behaviour change, not a move.
-- **[P1] De-dupe the byte-identical `AddTrigger` helper** (`CatFormSwatch` ≈ `CatFormColorPanel`,
-  literally copy-pasted) into one small `PointerTriggers` helper. *(Missed in the first draft; caught
-  by the abstraction + Codex lenses.)*
-- **[P1] Extract `PreviewColorSession` from `CatFormWardrobe`** — the colour snapshot + revert-on-cancel
-  (`ManagedColors`/`colorSnapshot`/`RevertUnlessConfirmed`) touches **zero** GameObject state; it's
-  pure `ConfigEntry` snapshot/restore, fully decoupled from the preview rig.
+  (~48 lines, no callers; Codex-flagged).
+- ✅ **Extracted `SliderRow`** — the Fur-Intensity slider (`AddSliderRow` + `ThinCenteredBar`) left
+  `CatFormColorPanel` (630→492). The panel passes its `AddLabel` in and gets an `onChanged` callback.
+- ✅ **Extracted `ColorParsing`** from `CatColorPatch` (518→489). `CatFormColorPanel.ParseOr` was
+  **left alone** — different semantics (no `#`-retry); unifying it stays backlogged as a behaviour change.
+- ✅ **Extracted `PointerTriggers`** — the byte-identical `AddTrigger` helper, previously copy-pasted
+  in `CatFormColorPanel` and `CatFormSwatch`, is now one shared method.
+- ✅ **Extracted `PreviewColorSession`** from `CatFormWardrobe` (474→409) — the colour snapshot +
+  revert-on-cancel, pure `ConfigEntry` state, fully decoupled from the preview rig.
 
 **Backlogged — logic-touching (verify in-game before shipping):**
 - **[P1] Decompose the rest of the `CatFormWardrobe` God-patch** — `CatPreviewController` (body

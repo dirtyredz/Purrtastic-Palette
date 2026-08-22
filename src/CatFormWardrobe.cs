@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using BepInEx.Configuration;
 using Chicken.Utilities;
 using HarmonyLib;
 using UnityEngine;
@@ -46,22 +45,8 @@ namespace PurrtasticPalette
         // possible. Cleared when the screen closes, since the preview rig itself is torn down.
         private static BodyViewAsset catBodyInstance;
 
-        // Live-preview support: a swatch pick applies immediately (so the cat updates as you browse),
-        // but is only KEPT if the player presses Confirm. Snapshot the colour config when the
-        // wardrobe opens and restore it on close-without-confirm - the same revert-on-cancel the
-        // game gives its own try-on clothing.
-        private static string[] colorSnapshot;
-        private static bool customizationsConfirmed;
-
-        private static ConfigEntry<string>[] ManagedColors() => new[]
-        {
-            PurrtasticPalettePlugin.FurColor,
-            PurrtasticPalettePlugin.WhiskerColor,
-            PurrtasticPalettePlugin.EyeColor,
-            PurrtasticPalettePlugin.PupilColor,
-            PurrtasticPalettePlugin.EyeHighlightColor,
-            PurrtasticPalettePlugin.AuraColor,
-        };
+        // Live-preview support (snapshot + revert-on-cancel) lives in PreviewColorSession - it is
+        // pure ConfigEntry state, kept apart from this class's preview-rig management.
 
         /// <summary>
         /// Whether the player owns Cat Form. Forms are ItemAssets whose ToolAddon is a form tool
@@ -139,10 +124,8 @@ namespace PurrtasticPalette
                 // reverts unless Confirm is pressed. OnCustomizationsConfirmed fires when the
                 // screen's Confirm button is clicked; its Signal lives on this screen instance and
                 // dies with it, so subscribing per-open needs no explicit unsubscribe.
-                var colors = ManagedColors();
-                colorSnapshot = colors.Select(c => c.Value).ToArray();
-                customizationsConfirmed = false;
-                __instance.OnCustomizationsConfirmed.AddListener(HandleCustomizationsConfirmed);
+                PreviewColorSession.Begin();
+                __instance.OnCustomizationsConfirmed.AddListener(PreviewColorSession.Confirm);
 
                 PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: added the Cat Form tab.");
             }
@@ -415,60 +398,12 @@ namespace PurrtasticPalette
         [HarmonyPostfix]
         private static void ClearCachedBody()
         {
-            RevertUnlessConfirmed();
+            PreviewColorSession.RevertUnlessConfirmed();
             CatFormColorPanel.Destroy();
             PreviewBloomSuppressor.Restore();
             hiddenCategoryObjects.Clear(); // the screen and its Content are torn down with it
             catBodyInstance = null;
             activeScreen = null;
-        }
-
-        private static void HandleCustomizationsConfirmed()
-        {
-            customizationsConfirmed = true;
-        }
-
-        /// <summary>
-        /// Restores the colour snapshot taken when the wardrobe opened, unless the player pressed
-        /// Confirm. Writing a ConfigEntry.Value raises SettingChanged, which reapplies colours to the
-        /// live player - so this reverts the world cat as well as discarding the preview picks. A
-        /// no-op when nothing changed or when confirmed.
-        /// </summary>
-        private static void RevertUnlessConfirmed()
-        {
-            try
-            {
-                if (customizationsConfirmed || colorSnapshot == null)
-                {
-                    return;
-                }
-
-                var colors = ManagedColors();
-                var reverted = 0;
-                for (var i = 0; i < colors.Length && i < colorSnapshot.Length; i++)
-                {
-                    if (colors[i] != null && colors[i].Value != colorSnapshot[i])
-                    {
-                        colors[i].Value = colorSnapshot[i];
-                        reverted++;
-                    }
-                }
-
-                if (reverted > 0)
-                {
-                    PurrtasticPalettePlugin.Log.LogInfo(
-                        $"[PurrtasticPalette] Wardrobe: reverted {reverted} colour(s) - closed without confirming.");
-                }
-            }
-            catch (Exception e)
-            {
-                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Wardrobe: colour revert failed: {e}");
-            }
-            finally
-            {
-                colorSnapshot = null;
-                customizationsConfirmed = false;
-            }
         }
     }
 }
