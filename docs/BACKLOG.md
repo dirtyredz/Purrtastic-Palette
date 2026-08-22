@@ -15,6 +15,7 @@ mod is published and the game can't be launched from this environment, so test b
   untouched (different semantics — unifying it is still backlogged below as logic-touching).
 - ✅ **Extracted `PointerTriggers.cs`** — the byte-identical `AddTrigger` helper, de-duplicated.
 - ✅ **Extracted `PreviewColorSession.cs`** from `CatFormWardrobe` (474→409) — snapshot + revert-on-cancel.
+- ✅ **Deleted stale `HANDOFF.md`** — the completed pre-1.0.0 folder-rename hand-off (mod is published at 1.1.0).
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
@@ -46,9 +47,6 @@ Nothing blocking. The mod ships and works.
 - **Move the drawn-swatch fallback** (`BuildSwatchShell`/`AddCaption`) out of `CatFormColorPanel` into
   a `DrawnSwatch` file paralleling `CatFormSwatch` — only worthwhile if both share a minimal
   refreshable-view contract. — *[verify in-game]*
-- **Delete the stale `HANDOFF.md`.** It documents the completed pre-1.0.0 folder rename; the mod is
-  published at 1.1.0 and it self-declares "delete once the upload is done." Cheap doc cleanup —
-  surface to the user before deleting (it's not code).
 - **Keyboard / gamepad swatch navigation** — shelved feature, see [FEATURES.md](FEATURES.md).
 
 ## Known issues

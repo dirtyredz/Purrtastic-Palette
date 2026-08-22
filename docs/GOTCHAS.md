@@ -40,5 +40,3 @@ that aren't in the README are here.
 - **`pack.ps1` and `Directory.Build.props` are workspace-synced canonicals** — edit them via
   `../../tools/sync-mod-files.ps1`, never by hand here, or the next sync reverts you.
 - **Never hardcode the version** — it flows from the csproj `<Version>` through `ModBuildInfo.Version`.
-- **`HANDOFF.md` is stale** — it describes the pre-1.0.0 folder rename, long since done (mod is
-  published at 1.1.0). Slated for removal; see [BACKLOG.md](BACKLOG.md).
