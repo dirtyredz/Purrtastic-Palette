@@ -1,0 +1,64 @@
+# BACKLOG — Purrtastic Palette
+
+Prioritised trough. P0 = do next / blocking · P1 = should do · P2 = nice-to-have / deferred.
+
+Structural items are the output of the full review stamped in [../STRUCTURE.md](../STRUCTURE.md)
+(**2026-08-22**): componentization + abstraction Claude lenses + an independent Codex cross-model
+pass. Each is tagged **[pure move]** (behaviour-neutral relocation, build-verifiable here — the game
+DLLs and dotnet are present) or **[verify in-game]** (changes dispatch/tie-break/cache semantics; the
+mod is published and the game can't be launched from this environment, so test before shipping).
+
+## Done in the review pass
+- ✅ **Removed dead code** — `Templates.CloneButton` + `SetLabel` (~48 lines, no live caller;
+  Codex-flagged). Build re-verified green (0 errors).
+
+## P0 — none
+Nothing blocking. The mod ships and works.
+
+## P1 — pure moves (safe to do without in-game verification)
+- **Extract the Fur-Intensity slider from `CatFormColorPanel`** — `AddSliderRow` + `ThinCenteredBar`
+  (~115 lines) → a `SliderRow`/`FloatSliderRow` file. Cleanest seam in the codebase; `CatFormColorPanel`
+  is the largest file (630 lines) and the slider shares nothing with the swatch code. — *[pure move]*
+- **Extract `ColorParsing.cs` from `CatColorPatch`** — `TryParseColor` + `ParseOptionalColor`, pure
+  `string→Color?`, 4 call sites. **Do not** silently fold in `CatFormColorPanel.ParseOr` — it lacks the
+  `#`-retry, so unifying is a behaviour change (that part is [verify in-game]). — *[pure move]*
+- **De-dupe the byte-identical `AddTrigger`** in `CatFormSwatch` (`:233`) and `CatFormColorPanel`
+  (`:538`) into one small `PointerTriggers` helper (optionally also attaching `ScrollForwarder`). — *[pure move]*
+- **Extract `PreviewColorSession` from `CatFormWardrobe`** — colour snapshot + revert-on-cancel
+  (`ManagedColors` `:56`, `colorSnapshot`/`customizationsConfirmed` `:53`, `RevertUnlessConfirmed`
+  `:437`). Pure `ConfigEntry` snapshot/restore, zero GameObject state — fully decoupled. — *[pure move]*
+
+## P1 — logic-touching (verify in-game before shipping)
+- **Decompose the rest of the `CatFormWardrobe` God-patch** into `CatPreviewController` (body
+  instantiate/swap, VFX + bloom suppression) and `WardrobePanelSwap` (hide/restore native rows +
+  build/destroy our panel), leaving a thin Harmony host. *Promoted from P2 — Codex judged it already a
+  God-controller, not contingent on growth.* — *[verify in-game]*
+- **`GameTemplate.Find<T>(predicate, tieBreak, label)`** to absorb the template-locate pattern in
+  `Templates.Find` (`:47`), `CatFormSwatch.FindTemplate` (`:61`), `HeaderDecoration.FindTemplateBar`
+  (`:24`). The three tie-break policies **differ** (3-tier fallback vs first-scene-valid vs
+  first-then-project-to-parent) — parameterize predicate *and* comparator per caller, or it silently
+  changes which template wins. — *[verify in-game]*
+
+## P2 — deferred / nice-to-have
+- **Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** (the larger
+  seam). Keep them as sibling methods — don't over-split. A standalone `PropertyBlockWriter.cs` is
+  **not** recommended (Codex: over-abstraction, a 2-caller impl detail with no independent policy). — *[verify in-game]*
+- **`TextureRecolor.GetOrBuild` → a `RecolorOptions` value type** with `Fur(...)`/`Eye(...)` factories,
+  collapsing the 9-positional-param signature and 8-tuple cache key. Low urgency (heavily doc-commented);
+  touches the cache key. — *[verify in-game]*
+- **Fold the four original-value caches in `CatColorPatch`** (`:105-111`) into an
+  `OriginalValueCache<K,V>` — *with care*: Codex flags that restore semantics differ (pupil uses the
+  picked colour's full value, not source brightness). Consider, don't assume clean. — *[verify in-game]*
+- **Unify hex parsing** — `CatColorPatch.TryParseColor` (`#`-retry) vs `CatFormColorPanel.ParseOr`
+  (no retry) are a latent behaviour drift; a shared `ColorHex.TryParse` removes both. Benign today
+  (every written value carries `#`). — *[verify in-game]*
+- **Move the drawn-swatch fallback** (`BuildSwatchShell`/`AddCaption`) out of `CatFormColorPanel` into
+  a `DrawnSwatch` file paralleling `CatFormSwatch` — only worthwhile if both share a minimal
+  refreshable-view contract. — *[verify in-game]*
+- **Delete the stale `HANDOFF.md`.** It documents the completed pre-1.0.0 folder rename; the mod is
+  published at 1.1.0 and it self-declares "delete once the upload is done." Cheap doc cleanup —
+  surface to the user before deleting (it's not code).
+- **Keyboard / gamepad swatch navigation** — shelved feature, see [FEATURES.md](FEATURES.md).
+
+## Known issues
+- None open. Keyboard/gamepad nav in the wardrobe panel is intentionally unsupported (mouse only).
