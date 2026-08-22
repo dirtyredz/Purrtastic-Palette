@@ -151,45 +151,6 @@ namespace PurrtasticPalette
             clone.gameObject.SetActive(true);
         }
 
-        /// <summary>The whole dance for a labelled button: stage it, strip it, label it, place it.</summary>
-        internal static AnimatedButton CloneButton(
-            AnimatedButton template, Transform parent, string name, string label, Action onClick,
-            float height = 64f, bool keepWings = false, Action<GameObject> prepare = null)
-        {
-            var button = CloneInactive(template, name);
-
-            prepare?.Invoke(button.gameObject);
-
-            StripLocalization(button.gameObject, destroy: true);
-            RemoveBatWings(button.gameObject);
-
-            if (!keepWings)
-            {
-                DisableSelectionMarker(button.gameObject);
-            }
-
-            SetLabel(button.gameObject, label);
-
-            // Guarded, because OnClick is a Chicken Signal: one throwing handler aborts the single
-            // multicast invocation and silently kills every listener registered after it.
-            button.OnClick.AddListener(() =>
-            {
-                try
-                {
-                    onClick();
-                }
-                catch (Exception e)
-                {
-                    PurrtasticPalettePlugin.Log.LogError($"'{label}' failed: {e}");
-                }
-            });
-
-            Place(button, template, parent, height);
-            SetLabel(button.gameObject, label);
-
-            return button;
-        }
-
         /// <summary>Clone, strip and place in one go, for the common case.</summary>
         internal static T Clone<T>(T template, Transform parent, string name) where T : Component
         {
@@ -321,15 +282,6 @@ namespace PurrtasticPalette
 
             PurrtasticPalettePlugin.Log.LogWarning(
                 $"No label text found on {widget.GetType().Name}; it will keep the template's own.");
-        }
-
-        /// <summary>Sets a cloned row's label, all text elements at once (plain buttons only carry one).</summary>
-        internal static void SetLabel(GameObject root, string label)
-        {
-            foreach (var text in root.GetComponentsInChildren<TMP_Text>(true))
-            {
-                text.text = label;
-            }
         }
     }
 }
