@@ -76,7 +76,7 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 | [src/PanelSprite.cs](src/PanelSprite.cs) | 132 | Generated 9-sliced plum/gold plate (+ plain white variant). Ported from ModNook. |
 | [src/GameFonts.cs](src/GameFonts.cs) | 123 | Locates the game's Gelica font + outline preset. Ported from LastSwing. |
 | [src/PawSprite.cs](src/PawSprite.cs) | 117 | Generated paw-print glyph for the tab icon. |
-| [src/HeaderDecoration.cs](src/HeaderDecoration.cs) | 100 | Clones the game's decorated category header. Template locate via `GameTemplate`. |
+| [src/HeaderDecoration.cs](src/HeaderDecoration.cs) | 113 | Clones the game's decorated category header. Template locate via `GameTemplate`. |
 | [src/PreviewBloomSuppressor.cs](src/PreviewBloomSuppressor.cs) | 74 | Adds/removes a global zero-bloom Volume while the tab is open. |
 | [src/TabIcon.cs](src/TabIcon.cs) | 70 | Loads a user PNG override, else falls back to `PawSprite`. |
 | [src/CircleSprite.cs](src/CircleSprite.cs) | 54 | Generated white circle sprite (swatch faces, slider handle). |

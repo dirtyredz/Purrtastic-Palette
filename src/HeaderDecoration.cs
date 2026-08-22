@@ -31,29 +31,42 @@ namespace PurrtasticPalette
                 return templateBar;
             }
 
-            var headerField = AccessTools.Field(typeof(CustomizationCategoryListWidget), "headerText");
-            if (headerField == null)
+            // Wrap the whole locate in try/catch so any failure (reflection, a torn-down widget)
+            // degrades to plain labels rather than throwing into the wardrobe UI - GameTemplate
+            // guards its own enumeration, but the reflected field lookup and the parent projection
+            // that frame it live out here in the caller.
+            try
             {
-                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Header: no headerText field found.");
-                return null;
+                var headerField = AccessTools.Field(typeof(CustomizationCategoryListWidget), "headerText");
+                if (headerField == null)
+                {
+                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Header: no headerText field found.");
+                    return null;
+                }
+
+                // The header lives on headerText's parent bar - that bar is what we clone. Prefer a
+                // bar in a live scene, and fall back to the last eligible widget seen (the original
+                // loop's behaviour) when none is scene-valid. The scene check and the result both
+                // project through the same parent, so they stay consistent.
+                GameObject BarOf(CustomizationCategoryListWidget w)
+                    => headerField.GetValue(w) is Component header && header.transform.parent != null
+                        ? header.transform.parent.gameObject
+                        : null;
+
+                var owner = GameTemplate.Find<CustomizationCategoryListWidget>(
+                    "Header",
+                    match: w => BarOf(w) != null,
+                    preferred: w => BarOf(w).scene.IsValid(),
+                    fallbackLast: true);
+
+                templateBar = owner != null ? BarOf(owner) : null;
+            }
+            catch (Exception e)
+            {
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] Header template lookup failed: {e}");
+                templateBar = null;
             }
 
-            // The header lives on headerText's parent bar - that bar is what we clone. Prefer a bar
-            // in a live scene, and fall back to the last eligible widget seen (the original loop's
-            // behaviour) when none is scene-valid. The scene check and the result both project
-            // through the same parent, so they stay consistent.
-            GameObject BarOf(CustomizationCategoryListWidget w)
-                => headerField.GetValue(w) is Component header && header.transform.parent != null
-                    ? header.transform.parent.gameObject
-                    : null;
-
-            var owner = GameTemplate.Find<CustomizationCategoryListWidget>(
-                "Header",
-                match: w => BarOf(w) != null,
-                preferred: w => BarOf(w).scene.IsValid(),
-                fallbackLast: true);
-
-            templateBar = owner != null ? BarOf(owner) : null;
             return templateBar;
         }
 

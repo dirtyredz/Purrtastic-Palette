@@ -84,7 +84,7 @@ namespace PurrtasticPalette
             }
             catch (Exception e)
             {
-                PurrtasticPalettePlugin.Log.LogWarning($"[PurrtasticPalette] {label} lookup failed: {e.Message}");
+                PurrtasticPalettePlugin.Log.LogError($"[PurrtasticPalette] {label} lookup failed: {e}");
                 return null;
             }
         }
