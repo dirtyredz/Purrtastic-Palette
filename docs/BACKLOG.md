@@ -27,6 +27,11 @@ mod is published and the game can't be launched from this environment, so test b
   `CatPreviewController` (preview-body instantiate/swap + VFX/bloom suppression) + `WardrobePanelSwap`
   (hide/restore native category rows + build/destroy our colour panel). The host only wires the three
   lifecycle hooks to those pieces and `PreviewColorSession`. Behaviour-neutral; confirmed in-game.
+- ✅ **Unified hex parsing** — `CatFormColorPanel.ParseOr` now routes through the shared
+  `ColorParsing.TryParse` (the parser `CatColorPatch` already uses) instead of calling
+  `ColorUtility.TryParseHtmlString` directly, so both paths get the same `#`-optional retry. No new
+  class needed — `ColorParsing` was already the shared parser. Happy path unchanged (every written
+  value carries `#`); the only new behaviour is that a bare `FF8800` now parses instead of falling back.
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
@@ -45,9 +50,6 @@ done and confirmed in-game — see "Done after the review pass" above. What rema
 - **Fold the four original-value caches in `CatColorPatch`** (`:105-111`) into an
   `OriginalValueCache<K,V>` — *with care*: Codex flags that restore semantics differ (pupil uses the
   picked colour's full value, not source brightness). Consider, don't assume clean. — *[verify in-game]*
-- **Unify hex parsing** — `CatColorPatch.TryParseColor` (`#`-retry) vs `CatFormColorPanel.ParseOr`
-  (no retry) are a latent behaviour drift; a shared `ColorHex.TryParse` removes both. Benign today
-  (every written value carries `#`). — *[verify in-game]*
 - **Move the drawn-swatch fallback** (`BuildSwatchShell`/`AddCaption`) out of `CatFormColorPanel` into
   a `DrawnSwatch` file paralleling `CatFormSwatch` — only worthwhile if both share a minimal
   refreshable-view contract. — *[verify in-game]*

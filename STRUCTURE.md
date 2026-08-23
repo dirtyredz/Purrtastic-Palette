@@ -115,8 +115,8 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   (~48 lines, no callers; Codex-flagged).
 - ✅ **Extracted `SliderRow`** — the Fur-Intensity slider (`AddSliderRow` + `ThinCenteredBar`) left
   `CatFormColorPanel` (630→492). The panel passes its `AddLabel` in and gets an `onChanged` callback.
-- ✅ **Extracted `ColorParsing`** from `CatColorPatch` (518→489). `CatFormColorPanel.ParseOr` was
-  **left alone** — different semantics (no `#`-retry); unifying it stays backlogged as a behaviour change.
+- ✅ **Extracted `ColorParsing`** from `CatColorPatch` (518→489). `CatFormColorPanel.ParseOr` later
+  routed through it too (see below), so the `#`-optional retry now has one implementation.
 - ✅ **Extracted `PointerTriggers`** — the byte-identical `AddTrigger` helper, previously copy-pasted
   in `CatFormColorPanel` and `CatFormSwatch`, is now one shared method.
 - ✅ **Extracted `PreviewColorSession`** from `CatFormWardrobe` (474→409) — the colour snapshot +
@@ -136,6 +136,10 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   (hide/restore native rows + build/destroy our panel). The host now only wires the three lifecycle
   hooks to those pieces + `PreviewColorSession`. Behaviour-neutral; confirmed in-game (tab, preview
   swap, live recolour, vanilla-tab restore, confirm/cancel).
+- ✅ **Unified hex parsing** — `CatFormColorPanel.ParseOr` now delegates to `ColorParsing.TryParse`
+  rather than calling `ColorUtility.TryParseHtmlString` directly, so it gets the same `#`-optional
+  retry as the recolour patch. Happy path unchanged (every written value carries `#`); the only new
+  behaviour is a bare `FF8800` parsing instead of falling back.
 
 **Backlogged — logic-touching (verify in-game before shipping):**
 - **[P2] Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** — the
