@@ -37,13 +37,15 @@ files never appear inside the engine or the patch classes. Two nuances the revie
         ▲                   CatColorPatch)
         │  reads colours from
   Wardrobe UI (view)       CatFormColorPanel · CatFormSwatch · ColorPickerPopup · Templates · SliderRow
+                           + wardrobe orchestration (driven by the CatFormWardrobe host):
+                             CatPreviewController (preview body) · WardrobePanelSwap (row/panel swap)
                            + widget locate: GameTemplate (shared by Templates/CatFormSwatch/HeaderDecoration)
                            + drawing helpers: CircleSprite · PanelSprite · PawSprite · TabIcon
                            · HeaderDecoration · GameFonts · ScrollForwarder · PreviewBloomSuppressor
                            · Palette (UI colours)
 ```
 
-## File-by-file (23 files, ~3.6k lines)
+## File-by-file (25 files, ~3.6k lines)
 
 ### Bootstrap
 | File | Lines | Responsibility |
@@ -61,7 +63,9 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ### Wardrobe UI (the "view")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 409 | Harmony host for 4 wardrobe-screen hooks: ownership gate, tab injection, preview-body swap, VFX hide, category-panel hide/restore. Still a God-patch (preview rig + panel swap) — see debt. |
+| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 173 | **Thin Harmony host** for 3 wardrobe-screen hooks (OnShow/HandleTabSelected/OnHide): ownership gate + tab injection, then wires the lifecycle to `CatPreviewController`, `WardrobePanelSwap`, and `PreviewColorSession`. Holds no rig/panel state. |
+| [src/CatPreviewController.cs](src/CatPreviewController.cs) | 193 | Owns the preview rig's cat body: instantiate/swap alongside the human body, mute in-preview VFX, suppress bloom, recolour. Extracted from `CatFormWardrobe`. |
+| [src/WardrobePanelSwap.cs](src/WardrobePanelSwap.cs) | 123 | Swaps the native category rows for our colour panel and back (hide/restore rows, build/destroy panel). Extracted from `CatFormWardrobe`. |
 | [src/CatFormColorPanel.cs](src/CatFormColorPanel.cs) | 492 | Builds the swatch panel: rows/presets, layout math, selection state, and the drawn-swatch fallback shell. Hosts a `SliderRow` for Fur Intensity. |
 | [src/SliderRow.cs](src/SliderRow.cs) | 149 | A labelled float slider widget (track/fill/handle), built for the Fur-Intensity row. Extracted from `CatFormColorPanel`. |
 | [src/PreviewColorSession.cs](src/PreviewColorSession.cs) | 86 | The try-on transaction: snapshot colours on open, revert on close-without-Confirm. Pure `ConfigEntry` state. Extracted from `CatFormWardrobe`. |
@@ -87,10 +91,12 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ## Structural debt
 
 Overall the code is **well-shaped**: call direction is downward-only (grep-confirmed), the drawing
-helpers are each one responsibility, and the comments are exceptional. The debt is concentrated in
-**three large files** — `CatColorPatch` (518), `CatFormColorPanel` (630), `CatFormWardrobe` (474) —
-that each accreted adjacent concerns, plus a handful of small duplications and one missing
-abstraction. This list is the output of a full-depth review (componentization + abstraction Claude
+helpers are each one responsibility, and the comments are exceptional. The original review found the
+debt concentrated in **three large files** — `CatColorPatch` (518), `CatFormColorPanel` (630),
+`CatFormWardrobe` (474). Two of the three are now addressed: `CatFormColorPanel` shed `SliderRow`
+(→492), and `CatFormWardrobe` was decomposed into a thin host + `CatPreviewController` +
+`WardrobePanelSwap` (474→173). `CatColorPatch` (489) is the remaining large engine file — see below.
+This list is the output of a full-depth review (componentization + abstraction Claude
 lenses + an independent Codex cross-model pass, **2026-08-22**); full triage in
 [docs/BACKLOG.md](docs/BACKLOG.md).
 
@@ -125,11 +131,13 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   sites' scene-valid + last-fallback via `fallbackLast`; Header projects through the reflected
   `headerText` to its parent bar for both the scene check and the result. Callers keep their own
   caching/projection. Verified in-game: slider, swatches, and decorated headers all still locate.
+- ✅ **Decomposed the `CatFormWardrobe` God-patch** (474→173) into a thin Harmony host plus
+  `CatPreviewController` (preview-body instantiate/swap + VFX/bloom) and `WardrobePanelSwap`
+  (hide/restore native rows + build/destroy our panel). The host now only wires the three lifecycle
+  hooks to those pieces + `PreviewColorSession`. Behaviour-neutral; confirmed in-game (tab, preview
+  swap, live recolour, vanilla-tab restore, confirm/cancel).
 
 **Backlogged — logic-touching (verify in-game before shipping):**
-- **[P1] Decompose the rest of the `CatFormWardrobe` God-patch** — `CatPreviewController` (body
-  instantiate/swap/VFX) and `WardrobePanelSwap` (hide/restore native rows + build/destroy our panel).
-  Promoted from P2: Codex judged it *already* a God-controller, not contingent-on-growth.
 - **[P2] Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** — the
   larger seam. Do **not** over-split: keep them as sibling methods, and note Codex judged a standalone
   `PropertyBlockWriter.cs` to be over-abstraction (a 2-caller impl detail, no independent policy) — so

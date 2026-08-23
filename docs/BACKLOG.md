@@ -23,15 +23,17 @@ mod is published and the game can't be launched from this environment, so test b
   `GameTemplate.cs`. The three differing tie-break policies are preserved as per-caller predicates
   (`match`/`preferred`/`secondary`/`fallbackLast`), not flattened; callers keep their own caching +
   projection. Build-verified and in-game smoke-tested (slider, swatches, decorated headers all locate).
+- ✅ **Decomposed the `CatFormWardrobe` God-patch** (474→173) into a thin Harmony host +
+  `CatPreviewController` (preview-body instantiate/swap + VFX/bloom suppression) + `WardrobePanelSwap`
+  (hide/restore native category rows + build/destroy our colour panel). The host only wires the three
+  lifecycle hooks to those pieces and `PreviewColorSession`. Behaviour-neutral; confirmed in-game.
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
 
-## P1 — logic-touching (verify in-game before shipping)
-- **Decompose the rest of the `CatFormWardrobe` God-patch** into `CatPreviewController` (body
-  instantiate/swap, VFX + bloom suppression) and `WardrobePanelSwap` (hide/restore native rows +
-  build/destroy our panel), leaving a thin Harmony host. *Promoted from P2 — Codex judged it already a
-  God-controller, not contingent on growth.* — *[verify in-game]*
+## P1 — none
+Both P1 items (the `GameTemplate.Find<T>` unification and the `CatFormWardrobe` decomposition) are
+done and confirmed in-game — see "Done after the review pass" above. What remains is all P2.
 
 ## P2 — deferred / nice-to-have
 - **Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** (the larger
