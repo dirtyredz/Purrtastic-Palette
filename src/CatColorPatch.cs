@@ -327,13 +327,12 @@ namespace PurrtasticPalette
                 }
             }
 
-            // splitBelowSaturation: -1 disables the pupil/iris split entirely. It must be
-            // negative, not 0 - the fur texture is overwhelmingly near-black desaturated pixels
-            // whose saturation is exactly 0, so a 0 threshold matched them all and copied them
-            // through unrecoloured, leaving the coat black.
+            // RecolorOptions.Fur disables the pupil/iris split entirely (splitBelowSaturation -1).
+            // It must be negative, not 0 - the fur texture is overwhelmingly near-black desaturated
+            // pixels whose saturation is exactly 0, so a 0 threshold matched them all and copied
+            // them through unrecoloured, leaving the coat black.
             var recolored = TextureRecolor.GetOrBuild(
-                OriginalFurTextures[key], hex, color, splitBelowSaturation: -1f,
-                brightnessFloor: FurBrightnessFloor, originalBlend: originalBlend);
+                RecolorOptions.Fur(OriginalFurTextures[key], hex, color, FurBrightnessFloor, originalBlend));
 
             // Set both: the material (harmless, and correct if no block is ever present) and the
             // property block (what actually wins at draw time when the game has set one).
@@ -418,8 +417,8 @@ namespace PurrtasticPalette
                 var pupilColor = ColorParsing.ParseOptional(PurrtasticPalettePlugin.PupilColor.Value, "PupilColor");
 
                 var recolored = TextureRecolor.GetOrBuild(
-                    OriginalEyeAtlases[material], hex, color, EyePupilSaturation, highlightColor, EyeBrightnessFloor,
-                    EyePupilValue, pupilColor);
+                    RecolorOptions.Eye(OriginalEyeAtlases[material], hex, color, EyePupilSaturation, highlightColor,
+                        EyeBrightnessFloor, EyePupilValue, pupilColor));
                 material.SetTexture("_Atlas", recolored);
                 WriteToPropertyBlock(renderer, materialIndex, "_Atlas", recolored, null, null);
                 Debug($"Eyes: regenerated '{material.name}' _Atlas toward {color} (parsed from '{hex}'); pupil=" +

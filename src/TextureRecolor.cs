@@ -27,84 +27,36 @@ namespace PurrtasticPalette
     /// </summary>
     internal static class TextureRecolor
     {
-        private static readonly Dictionary<(Texture Source, string Hex, float Threshold, Color? Highlight, float Floor,
-            float PupilSplit, Color? Pupil, float OriginalBlend), Texture2D> Cache =
-            new Dictionary<(Texture, string, float, Color?, float, float, Color?, float), Texture2D>();
+        private static readonly Dictionary<RecolorOptions, Texture2D> Cache =
+            new Dictionary<RecolorOptions, Texture2D>();
 
-        /// <param name="splitBelowSaturation">
-        /// Source pixels whose HSV saturation is at or below this are treated as the separate
-        /// "pupil" region; everything else takes the main target colour. Saturation, not
-        /// brightness, is the right axis here: the atlas is built from vertical gradient strips
-        /// where each strip is one swatch colour, so within a strip the VALUE varies top-to-
-        /// bottom while hue/saturation stay ~constant. Splitting on luminance therefore cut the
-        /// eye horizontally into "top half" and "bottom half" (observed in-game) instead of
-        /// separating iris from pupil - it was slicing across the gradient rather than between
-        /// strips. Splitting on saturation separates strip-from-strip, which is the actual
-        /// semantic boundary.
-        ///
-        /// Pass a NEGATIVE value to disable the split - not 0. Saturation is exactly 0 for any
-        /// pure black/grey pixel, so a 0 threshold still matches, and every such pixel gets
-        /// copied through unrecoloured. On the near-black fur texture that meant almost the
-        /// entire coat was deliberately preserved as black while only the few saturated pixels
-        /// took the target colour, which read in-game as "the colour is overlaying on top of the
-        /// black fur".
-        /// </param>
-        /// <param name="highlightColor">
-        /// What the desaturated-and-BRIGHT region is remapped toward - the eye's white highlight
-        /// glint. Null leaves those pixels exactly as they were.
-        /// </param>
-        /// <param name="splitBelowValue">
-        /// Within the desaturated region (see splitBelowSaturation), pixels at or below this HSV
-        /// value are the actual pupil rather than the highlight. Saturation alone cannot tell
-        /// these apart: a white highlight and a black pupil are both fully desaturated, so they
-        /// land in the same bucket and can only be separated by brightness. That is also why the
-        /// real pupil got recoloured by accident when the brightness floor was raised - it was
-        /// being treated as part of the same region as the highlight. Pass a negative value to
-        /// disable the pupil split, leaving the whole desaturated region as highlight.
-        /// </param>
-        /// <param name="pupilColor">
-        /// What the desaturated-and-DARK region (the actual pupil) is remapped toward. Null
-        /// leaves those pixels exactly as they were, which is the vanilla black pupil.
-        /// </param>
-        /// <param name="brightnessFloor">
-        /// Source value (the V in HSV, i.e. brightness) is remapped from [0, 1] to
-        /// [brightnessFloor, 1], then multiplied by the TARGET colour's own value - so the
-        /// output is always anchored to how bright the colour you actually picked is, not an
-        /// independent brightness computed from the floor alone. Without that anchor, a fully
-        /// vivid target (value 1.0) picked over a mostly-dark source texture could still only
-        /// ever reach `floor + sourceV*(1-floor)`, capping out well below full vibrancy no
-        /// matter how high the floor was pushed - that was the "had to turn the brightness way
-        /// up and still didn't get the vibrancy" result. 0 = no floor, full original shading
-        /// range preserved (darkest source pixels can still go near-black).
-        /// </param>
-        /// <param name="originalBlend">
-        /// How far each output pixel is faded back toward the ORIGINAL source pixel: 0 keeps the
-        /// full recolour, 1 leaves the texture untouched. This is the Fur Intensity control - a
-        /// lower intensity blends the original coat's own shading/gradient back in so the flat
-        /// recolour looks less uniform. Alpha is always taken from the source. 0 for every other
-        /// caller (eyes), so they're unaffected.
-        /// </param>
-        internal static Texture2D GetOrBuild(
-            Texture source, string hex, Color target, float splitBelowSaturation = -1f, Color? highlightColor = null,
-            float brightnessFloor = 0f, float splitBelowValue = -1f, Color? pupilColor = null, float originalBlend = 0f)
+        /// <summary>
+        /// Returns the recoloured texture for these options, building and caching it on first use.
+        /// See <see cref="RecolorOptions"/> for what each knob means and how the cache is keyed.
+        /// </summary>
+        internal static Texture2D GetOrBuild(RecolorOptions options)
         {
-            var key = (source, hex, splitBelowSaturation, highlightColor, brightnessFloor, splitBelowValue, pupilColor,
-                originalBlend);
-            if (Cache.TryGetValue(key, out var cached) && cached != null)
+            if (Cache.TryGetValue(options, out var cached) && cached != null)
             {
                 return cached;
             }
 
-            var result = Build(source, target, hex, splitBelowSaturation, highlightColor, brightnessFloor,
-                splitBelowValue, pupilColor, originalBlend);
-            Cache[key] = result;
+            var result = Build(options);
+            Cache[options] = result;
             return result;
         }
 
-        private static Texture2D Build(
-            Texture source, Color target, string cacheKey, float splitBelowSaturation, Color? highlightColor,
-            float brightnessFloor, float splitBelowValue, Color? pupilColor, float originalBlend)
+        private static Texture2D Build(RecolorOptions options)
         {
+            var source = options.Source;
+            var target = options.Target;
+            var splitBelowSaturation = options.SplitBelowSaturation;
+            var highlightColor = options.HighlightColor;
+            var brightnessFloor = options.BrightnessFloor;
+            var splitBelowValue = options.SplitBelowValue;
+            var pupilColor = options.PupilColor;
+            var originalBlend = options.OriginalBlend;
+
             var width = source.width;
             var height = source.height;
             var sourcePixels = ReadPixelsRobust(source, width, height);
@@ -183,7 +135,7 @@ namespace PurrtasticPalette
 
             var result = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: false)
             {
-                name = $"PurrtasticPalette_Recolor_{cacheKey}",
+                name = $"PurrtasticPalette_Recolor_{options.Hex}",
                 wrapMode = source.wrapMode,
                 filterMode = source.filterMode,
             };
