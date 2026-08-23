@@ -461,6 +461,9 @@ namespace PurrtasticPalette
             OnColorChanged?.Invoke();
         }
 
+        // Parse through the shared ColorParsing.TryParse (not ColorUtility directly) so this path
+        // gets the same "#"-optional retry the recolour patch uses - a bare "FF8800" parses instead
+        // of falling back. The blank guard stays: ColorParsing.TryParse would NRE on a null value.
         private static Color ParseOr(string hex, Color fallback)
         {
             if (string.IsNullOrWhiteSpace(hex))
@@ -468,7 +471,7 @@ namespace PurrtasticPalette
                 return fallback;
             }
 
-            return ColorUtility.TryParseHtmlString(hex, out var parsed) ? parsed : fallback;
+            return ColorParsing.TryParse(hex, out var parsed) ? parsed : fallback;
         }
 
         private readonly struct SwatchEntry
