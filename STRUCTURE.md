@@ -45,7 +45,7 @@ files never appear inside the engine or the patch classes. Two nuances the revie
                            · Palette (UI colours)
 ```
 
-## File-by-file (25 files, ~3.6k lines)
+## File-by-file (26 files, ~3.6k lines)
 
 ### Bootstrap
 | File | Lines | Responsibility |
@@ -55,7 +55,8 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ### Recolour engine (the "model")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/TextureRecolor.cs](src/TextureRecolor.cs) | 231 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. |
+| [src/TextureRecolor.cs](src/TextureRecolor.cs) | 183 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. Takes a `RecolorOptions`. |
+| [src/RecolorOptions.cs](src/RecolorOptions.cs) | 130 | Value type: the full input to `TextureRecolor.GetOrBuild` (source + target + HSV knobs), built via `Fur(...)`/`Eye(...)` factories. Also the cache key — equality/hash delegate to the same 8-field tuple the cache used before (Target excluded). |
 | [src/CatColorPatch.cs](src/CatColorPatch.cs) | 489 | The equip-time Harmony patch **and** the apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches. Still the largest engine file — see Structural debt for the remaining strategy seam. |
 | [src/ColorParsing.cs](src/ColorParsing.cs) | 42 | Hex/name → `Color?` parsing, shared by the fur/eye/aura paths. Extracted from `CatColorPatch`. |
 | [src/CatColorReapplier.cs](src/CatColorReapplier.cs) | 30 | Per-frame `Update()` safety net that re-applies fur (not eyes). One job. |
@@ -140,15 +141,16 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
   rather than calling `ColorUtility.TryParseHtmlString` directly, so it gets the same `#`-optional
   retry as the recolour patch. Happy path unchanged (every written value carries `#`); the only new
   behaviour is a bare `FF8800` parsing instead of falling back.
+- ✅ **`RecolorOptions` value type** — collapsed `TextureRecolor.GetOrBuild`'s 9-positional-param
+  signature + 8-tuple cache key into a `RecolorOptions` struct with `Fur(...)`/`Eye(...)` factories.
+  Cache-identical by construction (equality/hash delegate to the same tuple, Target excluded);
+  confirmed in-game (fur + eye recolour render; cache hits on repeat picks).
 
 **Backlogged — logic-touching (verify in-game before shipping):**
 - **[P2] Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** — the
   larger seam. Do **not** over-split: keep them as sibling methods, and note Codex judged a standalone
   `PropertyBlockWriter.cs` to be over-abstraction (a 2-caller impl detail, no independent policy) — so
   that one is *not* recommended on its own.
-- **[P2] `TextureRecolor.GetOrBuild`'s 9-positional-param signature / 8-tuple cache key** → a
-  `RecolorOptions` value type with `Fur(...)`/`Eye(...)` factories. Low urgency (heavily doc-commented);
-  touches the cache key, so verify.
 - **[P2] Original-value caches in `CatColorPatch`** (four dictionaries with a repeated
   capture/restore shape) *could* fold into an `OriginalValueCache<K,V>` — but Codex warns their
   **restore semantics differ** (pupil uses full picked value, not source brightness), so this is a

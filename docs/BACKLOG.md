@@ -32,6 +32,11 @@ mod is published and the game can't be launched from this environment, so test b
   `ColorUtility.TryParseHtmlString` directly, so both paths get the same `#`-optional retry. No new
   class needed — `ColorParsing` was already the shared parser. Happy path unchanged (every written
   value carries `#`); the only new behaviour is that a bare `FF8800` now parses instead of falling back.
+- ✅ **`RecolorOptions` value type** — collapsed `TextureRecolor.GetOrBuild`'s 9-positional-param
+  signature + 8-tuple cache key into a `RecolorOptions` struct (own file) with `Fur(...)`/`Eye(...)`
+  factories; the param docs moved onto its fields. Cache-identical by construction (equality/hash
+  delegate to the same 8-field tuple, `Target` excluded as before). Confirmed in-game — fur + eye
+  recolour render, and repeat picks hit the cache (instant).
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
@@ -44,9 +49,14 @@ done and confirmed in-game — see "Done after the review pass" above. What rema
 - **Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** (the larger
   seam). Keep them as sibling methods — don't over-split. A standalone `PropertyBlockWriter.cs` is
   **not** recommended (Codex: over-abstraction, a 2-caller impl detail with no independent policy). — *[verify in-game]*
-- **`TextureRecolor.GetOrBuild` → a `RecolorOptions` value type** with `Fur(...)`/`Eye(...)` factories,
-  collapsing the 9-positional-param signature and 8-tuple cache key. Low urgency (heavily doc-commented);
-  touches the cache key. — *[verify in-game]*
+- **Eye-atlas recolour lag on a new colour (perf/UX)** — picking an eye colour not yet built this
+  session spikes noticeably (fur does not). Confirmed *not* a caching bug: repeat picks of an
+  already-built colour are instant, so the cache hits. It's the inherent first-build cost of
+  `TextureRecolor.Build` on the larger eye atlas (`ReadPixelsRobust` blit + per-pixel HSV loop +
+  `SetPixels`/`Apply`). Pre-existing (predates the `RecolorOptions` refactor, which is cache-identical).
+  Options to explore: downscale the atlas before the pixel loop, move `ReadPixels`/`Build` off the
+  main thread (careful — `Texture2D` ops are main-thread-only; only the pixel math can move), or
+  pre-warm common colours. — *[verify in-game]*
 - **Fold the four original-value caches in `CatColorPatch`** (`:105-111`) into an
   `OriginalValueCache<K,V>` — *with care*: Codex flags that restore semantics differ (pupil uses the
   picked colour's full value, not source brightness). Consider, don't assume clean. — *[verify in-game]*
