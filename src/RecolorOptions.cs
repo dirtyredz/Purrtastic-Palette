@@ -11,9 +11,9 @@ namespace PurrtasticPalette
     /// This is also the recolour cache key. Equality and hashing use exactly the fields the cache
     /// keyed on before this type existed - notably <see cref="Hex"/> is in the key but
     /// <see cref="Target"/> is NOT: the target colour is a deterministic parse of the hex string, so
-    /// hex is its proxy, and adding target would change dedup for two different hex spellings that
-    /// parse to the same colour. The key is delegated to a ValueTuple so it stays bit-identical to
-    /// the original <c>Dictionary&lt;(...8 fields...), Texture2D&gt;</c> semantics.
+    /// it is redundant in the key (<see cref="Hex"/> already distinguishes every distinct input) and
+    /// is excluded to keep the key bit-identical to the original. The key is delegated to a ValueTuple
+    /// so it stays identical to the original <c>Dictionary&lt;(...8 fields...), Texture2D&gt;</c> semantics.
     /// </summary>
     internal readonly struct RecolorOptions : IEquatable<RecolorOptions>
     {
