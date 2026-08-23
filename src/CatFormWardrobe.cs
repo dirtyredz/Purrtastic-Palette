@@ -2,51 +2,27 @@ using System;
 using System.Linq;
 using Chicken.Utilities;
 using HarmonyLib;
-using UnityEngine;
 
 namespace PurrtasticPalette
 {
     /// <summary>
-    /// Phase 2, step 1: put a "Cat Form" tab in the mirror's wardrobe screen and show the cat in
-    /// the preview when it's picked.
-    ///
-    /// This is a spike, not the finished feature. It proves (or kills) the one assumption the
-    /// whole design rests on: that the customization preview can be made to show the Cat Form
-    /// body at all. Everything else - colour swatch rows, live apply, confirm/cancel - is
-    /// ordinary UI work that only makes sense if this works.
-    ///
-    /// Why it might not: the preview is NOT the player entity. CustomizationCharacterPreview is a
-    /// standalone rig with its own private BodyViewAsset field, so it is not driven by
-    /// EntityCustomization.SetBodyView the way the real player is - the cat body has to be
-    /// instantiated into the rig by hand. The rig's camera framing, lighting, scale and rotation
-    /// are all built around the human body, and the cat is a completely different shape and size.
-    /// It may render off-centre, mis-scaled, T-posed, or not at all.
+    /// Harmony host for the mirror's wardrobe screen. It injects the "Cat Form" tab (gated on
+    /// ownership) and, across the screen's lifecycle hooks, drives three pieces that do the actual
+    /// work: <see cref="CatPreviewController"/> (the preview-body swap + VFX/bloom),
+    /// <see cref="WardrobePanelSwap"/> (hide the native rows / build our colour panel), and
+    /// <see cref="PreviewColorSession"/> (snapshot colours + revert-on-cancel). This class only
+    /// wires the hooks to those pieces; it holds no rig or panel state of its own.
     /// </summary>
     [HarmonyPatch(typeof(WardrobeCustomizationScreen), "OnShow")]
     internal static class CatFormWardrobe
     {
-        private const string CatBodyViewNameFragment = "Hellkitten";
-
         private static readonly AccessTools.FieldRef<WardrobeCustomizationScreen, BumperMenuWidget> BumperMenuRef =
             AccessTools.FieldRefAccess<WardrobeCustomizationScreen, BumperMenuWidget>("bumperMenuWidget");
-
-        private static readonly AccessTools.FieldRef<CustomizationCharacterPreview, BodyViewAsset> PreviewBodyRef =
-            AccessTools.FieldRefAccess<CustomizationCharacterPreview, BodyViewAsset>("bodyView");
-
-        private static readonly AccessTools.FieldRef<WardrobeCustomizationScreen, CustomizationCategoryListWidget> CategoryListRef =
-            AccessTools.FieldRefAccess<WardrobeCustomizationScreen, CustomizationCategoryListWidget>("categoryListWidget");
 
         // The open screen, so the Cat Form tab's own handler can reach its widgets. The tab's
         // OnSelect is a plain callback with no screen argument, unlike the game's own tabs which
         // close over their Tab data.
         private static WardrobeCustomizationScreen activeScreen;
-
-        // The instantiated cat body, so repeated tab presses reuse it and hiding it again is
-        // possible. Cleared when the screen closes, since the preview rig itself is torn down.
-        private static BodyViewAsset catBodyInstance;
-
-        // Live-preview support (snapshot + revert-on-cancel) lives in PreviewColorSession - it is
-        // pure ConfigEntry state, kept apart from this class's preview-rig management.
 
         /// <summary>
         /// Whether the player owns Cat Form. Forms are ItemAssets whose ToolAddon is a form tool
@@ -114,16 +90,16 @@ namespace PurrtasticPalette
                 bumperMenu.Show();
 
                 // Re-select the default tab AFTER adding ours. Show() reflows the strip and refreshes
-                // the scroll selector but doesn't re-run the initial selection, so with enough tabs
-                // to overflow the strip it stays centred with the first (selected) tab faded at the
-                // edge. SelectDefaultMenu re-selects the first tab, and Show() just primed an instant
+                // the scroll selector but doesn't re-run the initial selection, so with enough tabs to
+                // overflow the strip it stays centred with the first (selected) tab faded at the edge.
+                // SelectDefaultMenu re-selects the first tab, and Show() just primed an instant
                 // scroll, so the strip snaps to show the selected tab properly.
                 bumperMenu.SelectDefaultMenu();
 
                 // Snapshot the cat colours now (before any pick) so picks are a live preview that
-                // reverts unless Confirm is pressed. OnCustomizationsConfirmed fires when the
-                // screen's Confirm button is clicked; its Signal lives on this screen instance and
-                // dies with it, so subscribing per-open needs no explicit unsubscribe.
+                // reverts unless Confirm is pressed. OnCustomizationsConfirmed fires when the screen's
+                // Confirm button is clicked; its Signal lives on this screen instance and dies with
+                // it, so subscribing per-open needs no explicit unsubscribe.
                 PreviewColorSession.Begin();
                 __instance.OnCustomizationsConfirmed.AddListener(PreviewColorSession.Confirm);
 
@@ -135,82 +111,19 @@ namespace PurrtasticPalette
             }
         }
 
+        // The Cat Form tab's OnSelect handler: show the cat in the preview, then swap the game's
+        // category rows for our colour panel - but only if the preview actually took, so a failed
+        // preview doesn't leave the rows hidden behind an empty panel.
         private static void ShowCatInPreview()
         {
             try
             {
-                if (!MonoBehaviourSingleton<CharacterCustomizer>.Exists)
+                if (!CatPreviewController.ShowCat())
                 {
-                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no CharacterCustomizer - cannot reach the preview.");
                     return;
                 }
 
-                var preview = MonoBehaviourSingleton<CharacterCustomizer>.Instance.CharacterPreview;
-                if (preview == null)
-                {
-                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: CharacterPreview is null.");
-                    return;
-                }
-
-                var humanBody = PreviewBodyRef(preview);
-                if (humanBody == null)
-                {
-                    PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: the preview has no body view to replace.");
-                    return;
-                }
-
-                if (catBodyInstance == null)
-                {
-                    var catBodyAsset = Asset.GetAll<BodyViewAsset>()
-                        .FirstOrDefault(x => x != null && x.name.IndexOf(CatBodyViewNameFragment, StringComparison.OrdinalIgnoreCase) >= 0);
-                    if (catBodyAsset == null)
-                    {
-                        PurrtasticPalettePlugin.Log.LogWarning(
-                            $"[PurrtasticPalette] Wardrobe: no BodyViewAsset matching '{CatBodyViewNameFragment}' found.");
-                        return;
-                    }
-
-                    // Instantiate alongside the human body and copy its local transform, so the cat
-                    // lands wherever the rig expects a body to be. Whether that framing suits a cat
-                    // is exactly what this spike is testing.
-                    catBodyInstance = UnityEngine.Object.Instantiate(catBodyAsset, humanBody.transform.parent);
-                    catBodyInstance.transform.localPosition = humanBody.transform.localPosition;
-                    catBodyInstance.transform.localRotation = humanBody.transform.localRotation;
-                    catBodyInstance.transform.localScale = humanBody.transform.localScale;
-                    PurrtasticPalettePlugin.Log.LogInfo(
-                        $"[PurrtasticPalette] Wardrobe: instantiated '{catBodyAsset.name}' into the preview under " +
-                        $"'{humanBody.transform.parent?.name}'.");
-                }
-
-                // Hide EVERY other body in the preview rig, not just the human - a sibling form mod
-                // (e.g. Fangtastic Palette's "Bat Form" tab) instantiates its body into the same
-                // parent and gets no teardown callback when this tab is picked, so switching from it
-                // to Cat otherwise leaves both bodies on screen. Deactivate all BodyViewAssets under
-                // the parent, then show only ours.
-                foreach (var body in humanBody.transform.parent.GetComponentsInChildren<BodyViewAsset>(true))
-                {
-                    if (body != null && body != catBodyInstance)
-                    {
-                        body.gameObject.SetActive(false);
-                    }
-                }
-
-                catBodyInstance.gameObject.SetActive(true);
-                HidePreviewVfx();
-                PreviewBloomSuppressor.Suppress();
-
-                // The preview cat is a separate instance of the body prefab with its own material
-                // instances, so the colours applied to the live player don't carry over - without
-                // this it renders vanilla black while the real cat outside is coloured.
-                CatColorPatch.ApplyToBody(catBodyInstance);
-
-                ClearCategoryPanel();
-                BuildColorPanel();
-
-                var renderers = catBodyInstance.GetComponentsInChildren<Renderer>(true).Length;
-                PurrtasticPalettePlugin.Log.LogInfo(
-                    $"[PurrtasticPalette] Wardrobe: showing the cat body in the preview " +
-                    $"({renderers} renderer(s), scale {catBodyInstance.transform.lossyScale}).");
+                WardrobePanelSwap.Show(activeScreen, CatPreviewController.ApplyColors);
             }
             catch (Exception e)
             {
@@ -219,137 +132,11 @@ namespace PurrtasticPalette
         }
 
         /// <summary>
-        /// Turns off the cat's glow effects in the wardrobe preview only. The preview holds the
-        /// model still and close to the camera, which makes the aura sparkles and trail far more
-        /// prominent than they are in play - enough to obscure the fur colour being picked. This
-        /// touches only the preview's own instantiated copy, so the glow in the world is
-        /// unaffected; AuraColor still controls that.
-        /// </summary>
-        private static void HidePreviewVfx()
-        {
-            if (catBodyInstance == null)
-            {
-                return;
-            }
-
-            var hidden = 0;
-            foreach (var particles in catBodyInstance.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                particles.gameObject.SetActive(false);
-                hidden++;
-            }
-
-            foreach (var trail in catBodyInstance.GetComponentsInChildren<TrailRenderer>(true))
-            {
-                trail.gameObject.SetActive(false);
-                hidden++;
-            }
-
-            PurrtasticPalettePlugin.Log.LogInfo($"[PurrtasticPalette] Wardrobe: hid {hidden} VFX object(s) in the preview.");
-        }
-
-        /// <summary>
-        /// Blanks the category rows on the right. Without this the panel keeps showing whatever
-        /// the previously selected tab built (skin colour swatches, accessories, ...), which is
-        /// both wrong and clickable - picking one would apply a human customization while the
-        /// cat is on screen. The real colour panel replaces this; for now an empty list is the
-        /// honest state.
-        /// </summary>
-        // The Content children this mod disabled to show its own panel, so exactly those can be
-        // re-enabled again - not blindly re-enabling the inactive template or empty-state view.
-        private static readonly System.Collections.Generic.List<GameObject> hiddenCategoryObjects =
-            new System.Collections.Generic.List<GameObject>();
-
-        private static void ClearCategoryPanel()
-        {
-            HideCategoryContent();
-        }
-
-        /// <summary>
-        /// Hides the game's category rows so the Cat Form panel can take their place. The
-        /// serialized categoryListWidget field points at an inactive TEMPLATE - the rows the game
-        /// actually displays are runtime CLONES of it ("CategoryListWidget(Clone)") sitting beside
-        /// it under Content (confirmed from a hierarchy dump). Disabling the template did nothing
-        /// visible; every currently-active Content child has to be disabled instead. Doing it by
-        /// "whatever is active right now" rather than by name also covers the empty-state view and
-        /// anything else the screen parks there.
-        /// </summary>
-        private static void HideCategoryContent()
-        {
-            hiddenCategoryObjects.Clear();
-
-            var parent = CategoryContentParent();
-            if (parent == null)
-            {
-                return;
-            }
-
-            foreach (Transform child in parent)
-            {
-                if (child.gameObject.activeSelf)
-                {
-                    child.gameObject.SetActive(false);
-                    hiddenCategoryObjects.Add(child.gameObject);
-                }
-            }
-        }
-
-        private static void RestoreCategoryContent()
-        {
-            foreach (var go in hiddenCategoryObjects)
-            {
-                if (go != null)
-                {
-                    go.SetActive(true);
-                }
-            }
-
-            hiddenCategoryObjects.Clear();
-        }
-
-        private static Transform CategoryContentParent()
-        {
-            if (activeScreen == null)
-            {
-                return null;
-            }
-
-            var categoryList = CategoryListRef(activeScreen);
-            return categoryList != null ? categoryList.transform.parent : null;
-        }
-
-        /// <summary>
-        /// Builds the swatch panel in the space the category rows would occupy, parented to the
-        /// category list's own parent so it inherits the screen's layout and scaling rather than
-        /// floating in its own canvas.
-        /// </summary>
-        private static void BuildColorPanel()
-        {
-            if (activeScreen == null)
-            {
-                return;
-            }
-
-            var categoryList = CategoryListRef(activeScreen);
-            var parent = categoryList != null ? categoryList.transform.parent : null;
-            if (parent == null)
-            {
-                PurrtasticPalettePlugin.Log.LogWarning("[PurrtasticPalette] Wardrobe: no panel parent - cannot build the colour panel.");
-                return;
-            }
-
-            // Recolour the preview as soon as a swatch is picked. The live player is handled by
-            // the plugin's own SettingChanged hook; this covers the preview's separate body.
-            CatFormColorPanel.OnColorChanged = () => CatColorPatch.ApplyToBody(catBodyInstance);
-            CatFormColorPanel.Build(parent);
-        }
-
-        /// <summary>
         /// Puts the human body back whenever one of the game's own tabs is picked. Those tabs go
-        /// through HandleTabSelected; the Cat Form tab does not, so this only ever fires for
-        /// vanilla tabs. A PREFIX, not a postfix, so it runs before the original repopulates the
-        /// category rows: it re-enables the category widget (which the cat tab disabled) and tears
-        /// down our panel first, leaving the original free to lay out normally.
+        /// through HandleTabSelected; the Cat Form tab does not, so this only ever fires for vanilla
+        /// tabs. A PREFIX, not a postfix, so it runs before the original repopulates the category
+        /// rows: it restores our hidden rows and tears down our panel first, then restores the human
+        /// body, leaving the original free to lay out normally.
         /// </summary>
         [HarmonyPatch(typeof(WardrobeCustomizationScreen), "HandleTabSelected")]
         [HarmonyPrefix]
@@ -359,30 +146,8 @@ namespace PurrtasticPalette
             {
                 // Always re-show the category rows and drop our panel, even if the cat was never
                 // shown - cheap, and it guarantees the game's rows are visible.
-                RestoreCategoryContent();
-                CatFormColorPanel.Destroy();
-
-                if (catBodyInstance == null || !MonoBehaviourSingleton<CharacterCustomizer>.Exists)
-                {
-                    return; // cat was never shown - nothing further to undo
-                }
-
-                var preview = MonoBehaviourSingleton<CharacterCustomizer>.Instance.CharacterPreview;
-                if (preview == null)
-                {
-                    return;
-                }
-
-                catBodyInstance.gameObject.SetActive(false);
-                PreviewBloomSuppressor.Restore();
-
-                var humanBody = PreviewBodyRef(preview);
-                if (humanBody != null)
-                {
-                    humanBody.gameObject.SetActive(true);
-                }
-
-                PurrtasticPalettePlugin.Log.LogInfo("[PurrtasticPalette] Wardrobe: restored the human body for a vanilla tab.");
+                WardrobePanelSwap.Hide();
+                CatPreviewController.HideCat();
             }
             catch (Exception e)
             {
@@ -391,18 +156,17 @@ namespace PurrtasticPalette
         }
 
         /// <summary>
-        /// The preview rig is destroyed with the screen, so the cached instance must not outlive
-        /// it - a stale reference would silently do nothing on the next visit.
+        /// Screen closing: revert an unconfirmed preview, tear down our panel, and forget the cached
+        /// body (the preview rig is destroyed with the screen, so a stale reference would silently do
+        /// nothing on the next visit).
         /// </summary>
         [HarmonyPatch(typeof(WardrobeCustomizationScreen), "OnHide")]
         [HarmonyPostfix]
         private static void ClearCachedBody()
         {
             PreviewColorSession.RevertUnlessConfirmed();
-            CatFormColorPanel.Destroy();
-            PreviewBloomSuppressor.Restore();
-            hiddenCategoryObjects.Clear(); // the screen and its Content are torn down with it
-            catBodyInstance = null;
+            WardrobePanelSwap.Discard();
+            CatPreviewController.Clear();
             activeScreen = null;
         }
     }
