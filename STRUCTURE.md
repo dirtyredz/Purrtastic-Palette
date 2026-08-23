@@ -55,7 +55,7 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ### Recolour engine (the "model")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/TextureRecolor.cs](src/TextureRecolor.cs) | 196 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. Takes a `RecolorOptions`. Caps the working resolution at `MaxRecolorDimension` (1024²) so the 4096² cat eye atlas doesn't freeze the game. |
+| [src/TextureRecolor.cs](src/TextureRecolor.cs) | 196 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. Takes a `RecolorOptions`. Caps the working resolution at `MaxRecolorDimension` (512²) so the 4096² cat eye atlas doesn't freeze the game. |
 | [src/RecolorOptions.cs](src/RecolorOptions.cs) | 130 | Value type: the full input to `TextureRecolor.GetOrBuild` (source + target + HSV knobs), built via `Fur(...)`/`Eye(...)` factories. Also the cache key — equality/hash delegate to the same 8-field tuple the cache used before (Target excluded). |
 | [src/CatColorPatch.cs](src/CatColorPatch.cs) | 489 | The equip-time Harmony patch **and** the apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches. Still the largest engine file — see Structural debt for the remaining strategy seam. |
 | [src/ColorParsing.cs](src/ColorParsing.cs) | 42 | Hex/name → `Color?` parsing, shared by the fur/eye/aura paths. Extracted from `CatColorPatch`. |

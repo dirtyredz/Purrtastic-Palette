@@ -32,12 +32,13 @@ namespace PurrtasticPalette
 
         // Cap the recolour working resolution. The cat eye atlas ships at 4096² - ~16.7M pixels -
         // and the per-pixel HSV loop over that froze the game for ~1.7s per build (and it builds two
-        // atlases on tab-open and on every eye-colour change). The eye is tiny on screen and the fur
-        // atlas is only 1024², so 4096² is pure waste. Downscale anything above this cap before the
-        // pixel work; the recoloured texture replaces the atlas and its normalised UVs sample the
-        // smaller texture fine. Textures already at or under the cap (fur, whiskers, smaller eye
-        // atlases) are untouched. Raise this if an eye looks too soft; lower it for more speed.
-        private const int MaxRecolorDimension = 1024;
+        // atlases on tab-open and on every eye-colour change). The eye is tiny on screen, so full res
+        // is waste. Downscale anything above this cap before the pixel work; the recoloured texture
+        // replaces the atlas and its normalised UVs sample the smaller texture fine.
+        // NOTE: this is a GLOBAL cap. At 512 the fur/whisker atlases (1024²) are also downscaled, not
+        // just the eyes - watch fur quality. If fur needs to stay sharp, make this a per-caller cap
+        // (eyes low, fur high) rather than lowering the global value. Raise it if a region looks soft.
+        private const int MaxRecolorDimension = 512;
 
         /// <summary>
         /// Returns the recoloured texture for these options, building and caching it on first use.

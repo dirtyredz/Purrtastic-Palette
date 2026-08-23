@@ -41,12 +41,12 @@ mod is published and the game can't be launched from this environment, so test b
   **4096²**; the per-pixel HSV loop over 16.7M pixels froze the game ~1.7s per build, ×2 atlases, on
   every Cat-Form transform, wardrobe tab-open, and eye-colour change. Profiled it (stopwatch: ~85% is
   the CPU loop), proved it predates all recent refactors *and* is independent of Fangtastic (repro'd
-  on a first-version, Fangtastic-free PC). Fix: cap the recolour working resolution at 1024²
+  on a first-version, Fangtastic-free PC). Fix: cap the recolour working resolution at 512²
   (`TextureRecolor.MaxRecolorDimension`) — the source is downscaled on the blit before the pixel work,
-  so builds drop **~1700ms → ~130ms** (matching fur). Justified because the eye is tiny on screen and
-  Fangtastic's smaller bat eye atlas already recolours fine at low res. Confirmed in-game: no freeze,
-  eyes still crisp. Textures already ≤ the cap (fur, whiskers) are untouched. Knob to tune if an eye
-  ever looks soft: raise the cap.
+  so builds drop **~1700ms → ~30ms**. Justified because the eye is tiny on screen and Fangtastic's
+  smaller bat eye atlas already recolours fine at low res. Confirmed in-game: no freeze, and both eyes
+  and fur still crisp at 512². The cap is global, so the 1024² fur/whisker atlases are downscaled too;
+  if fur ever needs to stay sharp, make the cap per-caller (eyes low, fur high) rather than raising it.
 
 ## P0 — none
 Nothing blocking. The mod ships and works.

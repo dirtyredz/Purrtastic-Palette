@@ -4,18 +4,21 @@ Design/architecture decisions and their rationale, newest first. The pixel-level
 several of these are written up at length in [../README.md](../README.md); this file is the
 short "why we chose X over Y" index.
 
-## ADR-010 — Cap the recolour working resolution (`MaxRecolorDimension` = 1024²)
+## ADR-010 — Cap the recolour working resolution (`MaxRecolorDimension` = 512²)
 The cat eye atlas ships at **4096²**. Recolouring it at native resolution ran the per-pixel HSV loop
 over 16.7M pixels — ~1.7s per build on the main thread, ×2 eye atlases, on every Cat-Form transform,
 wardrobe tab-open, and eye-colour change (a ~3.4s freeze each time). Profiling showed ~85% of the cost
-is the CPU loop; the read-back and upload are minor. We **downscale the source to at most 1024² on the
-blit** before the pixel work, dropping a build to ~130ms (matching the fur atlas). Justified: the eye
-is tiny on screen, and Fangtastic's smaller bat eye atlas already recolours fine at low res, so 4096²
-was pure waste. **Rejected:** (a) *off-thread pixel loop* — keeps native res but still leaves a
-~300ms read+upload stall per atlas and needs async apply + main-thread marshalling + race handling,
-much more complex for a worse result; (b) *GPU shader recolour* — near-instant and full-res, but needs
-a compiled shader asset bundle matched to the game's Unity version, which can't be produced from the
-build environment. The cap is one tunable constant — raise it if an eye ever looks too soft.
+is the CPU loop; the read-back and upload are minor. We **downscale the source to at most 512² on the
+blit** before the pixel work, dropping a build from ~1700ms to ~30ms. Justified: the eye is tiny on
+screen, and Fangtastic's smaller bat eye atlas already recolours fine at low res, so 4096² was pure
+waste; 512² was confirmed crisp in-game for both eyes and fur. The cap is **global** (one const), so at
+512² the fur/whisker atlases (1024²) are also downscaled — acceptable here, but if fur ever needs to
+stay sharp, make the cap per-caller (via the `Fur`/`Eye` factories) rather than raising the global
+value. **Rejected:** (a) *off-thread pixel loop* — keeps native res but still leaves a ~300ms
+read+upload stall per atlas and needs async apply + main-thread marshalling + race handling, much more
+complex for a worse result; (b) *GPU shader recolour* — near-instant and full-res, but needs a compiled
+shader asset bundle matched to the game's Unity version, which can't be produced from the build
+environment. The cap is one tunable constant — raise it (or make it per-caller) if a region looks soft.
 
 ## ADR-009 — Recolour engine duplicated per mod, shared only as docs
 Each *Palette* mod (Purr/Fang/Fin) is a **standalone git repo** that must build and ship alone, so
