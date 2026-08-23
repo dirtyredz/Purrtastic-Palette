@@ -30,6 +30,15 @@ namespace PurrtasticPalette
         private static readonly Dictionary<RecolorOptions, Texture2D> Cache =
             new Dictionary<RecolorOptions, Texture2D>();
 
+        // Cap the recolour working resolution. The cat eye atlas ships at 4096² - ~16.7M pixels -
+        // and the per-pixel HSV loop over that froze the game for ~1.7s per build (and it builds two
+        // atlases on tab-open and on every eye-colour change). The eye is tiny on screen and the fur
+        // atlas is only 1024², so 4096² is pure waste. Downscale anything above this cap before the
+        // pixel work; the recoloured texture replaces the atlas and its normalised UVs sample the
+        // smaller texture fine. Textures already at or under the cap (fur, whiskers, smaller eye
+        // atlases) are untouched. Raise this if an eye looks too soft; lower it for more speed.
+        private const int MaxRecolorDimension = 1024;
+
         /// <summary>
         /// Returns the recoloured texture for these options, building and caching it on first use.
         /// See <see cref="RecolorOptions"/> for what each knob means and how the cache is keyed.
@@ -57,8 +66,12 @@ namespace PurrtasticPalette
             var pupilColor = options.PupilColor;
             var originalBlend = options.OriginalBlend;
 
-            var width = source.width;
-            var height = source.height;
+            // Downscale oversized atlases to the cap before the pixel work (see MaxRecolorDimension).
+            // ReadPixelsRobust blits the source into a width×height RenderTexture, so a smaller
+            // target here means the GPU downscales on the blit and the loop/output run at that size.
+            var scale = Mathf.Min(1f, (float)MaxRecolorDimension / Mathf.Max(source.width, source.height));
+            var width = Mathf.Max(1, Mathf.RoundToInt(source.width * scale));
+            var height = Mathf.Max(1, Mathf.RoundToInt(source.height * scale));
             var sourcePixels = ReadPixelsRobust(source, width, height);
 
             Color.RGBToHSV(target, out var targetH, out var targetS, out var targetV);

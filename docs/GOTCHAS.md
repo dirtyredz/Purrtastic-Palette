@@ -17,6 +17,12 @@ that aren't in the README are here.
 - **The pupil is painted at the picked colour's own value**, not scaled by its (near-zero) source
   brightness — else a black pupil stays black whatever you pick.
 - **Emission is dead** (see [DECISIONS.md](DECISIONS.md) ADR-001) — don't rebuild it.
+- **The cat eye atlas is 4096² — recolour it at full res and the game freezes ~1.7s per build.** The
+  per-pixel HSV loop over 16.7M pixels is CPU-bound (~85% of build time), and two eye atlases rebuild
+  on every Cat-Form transform, tab-open, and eye-colour change (~3.4s). `TextureRecolor` caps the
+  working resolution at `MaxRecolorDimension` (1024²) — the source is downscaled on the blit before
+  the loop, so a build is ~130ms. Don't remove the cap; if an eye looks soft, raise it (2048²), don't
+  drop it. Fur/whiskers ship ≤1024² and are already under the cap. (See [DECISIONS.md](DECISIONS.md) ADR-010.)
 
 ## Wardrobe UI
 - **The preview cat is a separate body instance** with its own materials — colours applied to the

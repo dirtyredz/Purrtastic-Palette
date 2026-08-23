@@ -37,6 +37,16 @@ mod is published and the game can't be launched from this environment, so test b
   factories; the param docs moved onto its fields. Cache-identical by construction (equality/hash
   delegate to the same 8-field tuple, `Target` excluded as before). Confirmed in-game — fur + eye
   recolour render, and repeat picks hit the cache (instant).
+- ✅ **Fixed the eye-recolour freeze (`MaxRecolorDimension` cap)** — the cat eye atlas ships at
+  **4096²**; the per-pixel HSV loop over 16.7M pixels froze the game ~1.7s per build, ×2 atlases, on
+  every Cat-Form transform, wardrobe tab-open, and eye-colour change. Profiled it (stopwatch: ~85% is
+  the CPU loop), proved it predates all recent refactors *and* is independent of Fangtastic (repro'd
+  on a first-version, Fangtastic-free PC). Fix: cap the recolour working resolution at 1024²
+  (`TextureRecolor.MaxRecolorDimension`) — the source is downscaled on the blit before the pixel work,
+  so builds drop **~1700ms → ~130ms** (matching fur). Justified because the eye is tiny on screen and
+  Fangtastic's smaller bat eye atlas already recolours fine at low res. Confirmed in-game: no freeze,
+  eyes still crisp. Textures already ≤ the cap (fur, whiskers) are untouched. Knob to tune if an eye
+  ever looks soft: raise the cap.
 
 ## P0 — none
 Nothing blocking. The mod ships and works.
@@ -49,14 +59,6 @@ done and confirmed in-game — see "Done after the review pass" above. What rema
 - **Separate the fur/eye/aura strategies from the patch + traversal in `CatColorPatch`** (the larger
   seam). Keep them as sibling methods — don't over-split. A standalone `PropertyBlockWriter.cs` is
   **not** recommended (Codex: over-abstraction, a 2-caller impl detail with no independent policy). — *[verify in-game]*
-- **Eye-atlas recolour lag on a new colour (perf/UX)** — picking an eye colour not yet built this
-  session spikes noticeably (fur does not). Confirmed *not* a caching bug: repeat picks of an
-  already-built colour are instant, so the cache hits. It's the inherent first-build cost of
-  `TextureRecolor.Build` on the larger eye atlas (`ReadPixelsRobust` blit + per-pixel HSV loop +
-  `SetPixels`/`Apply`). Pre-existing (predates the `RecolorOptions` refactor, which is cache-identical).
-  Options to explore: downscale the atlas before the pixel loop, move `ReadPixels`/`Build` off the
-  main thread (careful — `Texture2D` ops are main-thread-only; only the pixel math can move), or
-  pre-warm common colours. — *[verify in-game]*
 - **Fold the four original-value caches in `CatColorPatch`** (`:105-111`) into an
   `OriginalValueCache<K,V>` — *with care*: Codex flags that restore semantics differ (pupil uses the
   picked colour's full value, not source brightness). Consider, don't assume clean. — *[verify in-game]*
