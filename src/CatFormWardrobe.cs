@@ -124,6 +124,10 @@ namespace PurrtasticPalette
                 }
 
                 WardrobePanelSwap.Show(activeScreen, CatPreviewController.ApplyColors);
+
+                // Log the shown state LAST - after the panel is built - so a diagnostic failure here
+                // can't leave the native rows up behind an activated cat with no panel.
+                CatPreviewController.LogShownState();
             }
             catch (Exception e)
             {

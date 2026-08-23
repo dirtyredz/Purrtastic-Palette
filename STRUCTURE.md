@@ -63,8 +63,8 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ### Wardrobe UI (the "view")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 173 | **Thin Harmony host** for 3 wardrobe-screen hooks (OnShow/HandleTabSelected/OnHide): ownership gate + tab injection, then wires the lifecycle to `CatPreviewController`, `WardrobePanelSwap`, and `PreviewColorSession`. Holds no rig/panel state. |
-| [src/CatPreviewController.cs](src/CatPreviewController.cs) | 193 | Owns the preview rig's cat body: instantiate/swap alongside the human body, mute in-preview VFX, suppress bloom, recolour. Extracted from `CatFormWardrobe`. |
+| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 177 | **Thin Harmony host** for 3 wardrobe-screen hooks (OnShow/HandleTabSelected/OnHide): ownership gate + tab injection, then wires the lifecycle to `CatPreviewController`, `WardrobePanelSwap`, and `PreviewColorSession`. Holds no rig/panel state. |
+| [src/CatPreviewController.cs](src/CatPreviewController.cs) | 206 | Owns the preview rig's cat body: instantiate/swap alongside the human body, mute in-preview VFX, suppress bloom, recolour. Extracted from `CatFormWardrobe`. |
 | [src/WardrobePanelSwap.cs](src/WardrobePanelSwap.cs) | 123 | Swaps the native category rows for our colour panel and back (hide/restore rows, build/destroy panel). Extracted from `CatFormWardrobe`. |
 | [src/CatFormColorPanel.cs](src/CatFormColorPanel.cs) | 492 | Builds the swatch panel: rows/presets, layout math, selection state, and the drawn-swatch fallback shell. Hosts a `SliderRow` for Fur Intensity. |
 | [src/SliderRow.cs](src/SliderRow.cs) | 149 | A labelled float slider widget (track/fill/handle), built for the Fur-Intensity row. Extracted from `CatFormColorPanel`. |

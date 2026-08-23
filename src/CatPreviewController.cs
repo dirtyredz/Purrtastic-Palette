@@ -99,12 +99,25 @@ namespace PurrtasticPalette
             // instances, so the colours applied to the live player don't carry over - without this it
             // renders vanilla black while the real cat outside is coloured.
             ApplyColors();
+            return true;
+        }
+
+        /// <summary>
+        /// Logs the shown cat's renderer count and scale. The host calls this AFTER the colour panel
+        /// is built - matching the original ordering, so that a failure in this diagnostic can never
+        /// prevent the panel swap that has already completed. No-op if the cat isn't shown.
+        /// </summary>
+        internal static void LogShownState()
+        {
+            if (catBodyInstance == null)
+            {
+                return;
+            }
 
             var renderers = catBodyInstance.GetComponentsInChildren<Renderer>(true).Length;
             PurrtasticPalettePlugin.Log.LogInfo(
                 $"[PurrtasticPalette] Wardrobe: showing the cat body in the preview " +
                 $"({renderers} renderer(s), scale {catBodyInstance.transform.lossyScale}).");
-            return true;
         }
 
         /// <summary>
