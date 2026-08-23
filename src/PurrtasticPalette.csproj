@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>PurrtasticPalette</AssemblyName>
     <RootNamespace>PurrtasticPalette</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <ModDeployPath>$(MoonlightPeaksPluginDeployPath)\PurrtasticPalette</ModDeployPath>
     <!-- The game ships its own copies of every assembly below; never copy them next to the plugin. -->

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1 — 2026-08-23
+
+Fixes a multi-second freeze when recolouring Cat Form.
+
+- **Fixed:** a long stutter (up to ~1.7s, and more when several parts changed at once) every time
+  you transformed into Cat Form, opened the Cat Form wardrobe tab, or changed the eye colour. The
+  eye/whisker texture was being regenerated at its full 4096² resolution on the main thread; it's
+  now recoloured at a capped resolution, so the same operation takes a few milliseconds — with no
+  visible change to how the cat looks.
+- Internal: assorted behaviour-neutral code cleanups; no functional change.
+
 ## 1.1.0 — 2026-08-20
 
 Adds a **Fur Intensity** slider, and fixes a preview clash with sibling form mods.
