@@ -71,7 +71,13 @@ PurrtasticPalette/
 
 ## The three layers
 
-The code splits into three concerns. **Call direction is downward only** — a grep confirms the UI
+The code splits into three concerns. **These layers are NOT the folders.** `## Layout` above groups
+files by what they *touch* (`game/`, `ui/`, `core/`); the layers below group them by what they *do*.
+The two axes cross deliberately — most of "Wardrobe UI (the view)" lives in `src/game/`, because
+those files build the view by cloning and driving live game widgets. Read a layer name as a role,
+never as a directory.
+
+**Call direction is downward only** — a grep confirms the UI
 files never appear inside the engine or the patch classes. Two nuances the review corrected:
 
 - **`Plugin` is a cross-cutting config foundation, not just the top of the stack.** Its

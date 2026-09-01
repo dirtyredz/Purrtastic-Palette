@@ -1,4 +1,4 @@
-// Ported from mods/ModNook/src/Templates.cs, namespace aside, with the bat-wing-fitting path
+// Ported from mods/ModNook/src/game/Templates.cs, namespace aside, with the bat-wing-fitting path
 // removed (FitBatWings/BatWingFitter) since this mod never clones with keepWings: true - its
 // buttons live on their own screen-injected row and its popup buttons are hand-drawn, neither
 // wears the pause-menu's corner decoration. Everything else is unchanged. Fix bugs in both

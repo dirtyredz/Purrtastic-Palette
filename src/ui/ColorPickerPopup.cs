@@ -8,7 +8,7 @@ using UnityEngine.UI;
 namespace PurrtasticPalette
 {
     /// <summary>
-    /// Trimmed adaptation of mods/ModNook/src/ColorPicker.cs: same dialog shape (dim overlay,
+    /// Trimmed adaptation of mods/ModNook/src/ui/dialogs/ColorPicker.cs: same dialog shape (dim overlay,
     /// rounded plate, preview swatch, RGB sliders built from the game's own SliderButton), minus
     /// the palette-from-ColorLibrary section and all BepInEx ConfigEntry plumbing - this edits a
     /// plain Color and hands it back through a callback, nothing here knows about config files.

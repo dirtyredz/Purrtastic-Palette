@@ -1,4 +1,4 @@
-// Ported from mods/ModNook/src/PanelSprite.cs, namespace aside. See 10-visual-integration.md.
+// Ported from mods/ModNook/src/ui/PanelSprite.cs, namespace aside. See 10-visual-integration.md.
 // Fix bugs in both copies.
 using UnityEngine;
 
