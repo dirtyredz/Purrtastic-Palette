@@ -11,7 +11,63 @@ the recolour works and why, read [README.md](README.md) and
 A BepInEx 5 / HarmonyX plugin for the Unity Mono game *Moonlight Peaks* that recolours **Cat Form**
 (fur, whiskers, iris, pupil, eye highlight, movement trail) two ways: BepInEx config entries (which
 Mod Nook renders as a menu) and a **Cat Form tab injected into the mirror's wardrobe** with a live
-preview, swatch pickers, and an RGB colour picker. netstandard2.1; plugin `.cs` sit flat in `src/`.
+preview, swatch pickers, and an RGB colour picker. netstandard2.1; the plugin `.cs` are foldered by responsibility under `src/` (see [Layout](#layout)).
+
+## Layout
+
+Where a new file goes. The tree is for humans; the **Enforced homes** list below is the machine-read
+contract (the placement hook parses it), so keep the two in step.
+
+```
+PurrtasticPalette/
+├── pack.ps1                  build + zip to dist/ (workspace-synced canonical — don't hand-edit)
+├── Directory.Build.props     game DLL refs + GenerateModBuildInfo (synced canonical)
+├── STRUCTURE.md              this map · README/CHANGELOG/NEXUS/RELEASING beside it
+├── docs/                     ARCHITECTURE · DECISIONS · FEATURES · ROADMAP · BACKLOG · GOTCHAS
+├── screenshots/              Nexus art (PNG only)
+├── scripts/                  repo shell tooling: install-git-hooks.sh, pre-commit.sh
+├── .github/workflows/        CI (format check only — no runner has the game's DLLs)
+└── src/
+    ├── PurrtasticPalette.csproj   netstandard2.1; **/*.cs globs recursively, so folders need no edit
+    ├── Plugin.cs                  BepInEx entry point — MUST stay beside the .csproj
+    ├── game/                      the game-facing edge: Harmony patches + live-asset bridges
+    │   ├── CatColorPatch.cs           equip-time patch + the apply-to-renderers logic
+    │   ├── CatFormWardrobe.cs         3 wardrobe-screen patches (OnShow/HandleTabSelected/OnHide)
+    │   ├── CatColorReapplier.cs       per-frame guard: re-applies what the game reverts
+    │   ├── CatPreviewController.cs    owns the wardrobe preview rig's cat body
+    │   ├── WardrobePanelSwap.cs       hides the native category rows, shows ours, restores them
+    │   ├── PreviewBloomSuppressor.cs  overrides the game's bloom while the tab is open
+    │   ├── GameTemplate.cs            locates a native widget to clone (incl. inactive/prefabs)
+    │   ├── GameFonts.cs               locates the game's Gelica font + outline preset
+    │   └── Templates.cs               clones/places/strips those located game widgets
+    ├── ui/                        everything the mod draws: panels, widgets, sprites, dialogs
+    │   ├── CatFormColorPanel.cs       the swatch panel (rows, presets, layout, selection)
+    │   ├── CatFormSwatch.cs           one swatch, cloned from the game's option widget
+    │   ├── SliderRow.cs               labelled float slider (Fur Intensity)
+    │   ├── ColorPickerPopup.cs        the RGB picker dialog
+    │   ├── HeaderDecoration.cs        decorated category header
+    │   ├── TabIcon.cs                 tab icon: user PNG override, else PawSprite
+    │   ├── PawSprite.cs               generated paw glyph
+    │   ├── PanelSprite.cs             generated 9-sliced plum/gold plate
+    │   ├── CircleSprite.cs            generated white circle
+    │   ├── Palette.cs                 the two UI colours the mod draws itself
+    │   ├── PointerTriggers.cs         EventTrigger hover/click wiring
+    │   └── ScrollForwarder.cs         forwards the wheel up to the ScrollRect
+    └── core/                      the mod's own domain logic + state — no game patching
+        ├── TextureRecolor.cs          HSV-colorize regeneration + cache (no game/UI deps)
+        ├── RecolorOptions.cs          the recolour input value type (and cache key)
+        ├── ColorParsing.cs            hex/name → Color?
+        └── PreviewColorSession.cs     the try-on transaction over the ConfigEntry statics
+```
+
+**Enforced homes:**
+
+- `src/game/` — Harmony patches and live-game bridges
+- `src/ui/` — panels, widgets, sprites, icons, dialogs, and the layout that arranges them
+- `src/core/` — the mod's own domain logic, state, and config-backed session
+- `src/Plugin.cs` — BepInEx entry point; must sit beside the `.csproj`
+- `scripts/` — repo shell tooling (git-hook install, pre-commit formatter)
+- `pack.ps1` — build/zip entry point; workspace-synced canonical, must stay at the mod root
 
 ## The three layers
 
@@ -55,39 +111,39 @@ files never appear inside the engine or the patch classes. Two nuances the revie
 ### Recolour engine (the "model")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/TextureRecolor.cs](src/TextureRecolor.cs) | 196 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. Takes a `RecolorOptions`. Caps the working resolution at `MaxRecolorDimension` (512²) so the 4096² cat eye atlas doesn't freeze the game. |
-| [src/RecolorOptions.cs](src/RecolorOptions.cs) | 130 | Value type: the full input to `TextureRecolor.GetOrBuild` (source + target + HSV knobs), built via `Fur(...)`/`Eye(...)` factories. Also the cache key — equality/hash delegate to the same 8-field tuple the cache used before (Target excluded). |
-| [src/CatColorPatch.cs](src/CatColorPatch.cs) | 489 | The equip-time Harmony patch **and** the apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches. Still the largest engine file — see Structural debt for the remaining strategy seam. |
-| [src/ColorParsing.cs](src/ColorParsing.cs) | 42 | Hex/name → `Color?` parsing, shared by the fur/eye/aura paths. Extracted from `CatColorPatch`. |
-| [src/CatColorReapplier.cs](src/CatColorReapplier.cs) | 30 | Per-frame `Update()` safety net that re-applies fur (not eyes). One job. |
+| [src/core/TextureRecolor.cs](src/core/TextureRecolor.cs) | 196 | Pure HSV-colorize texture regeneration + cache. **No game/UI deps — the reuse surface** shared in spirit with the sibling *Palette* mods. Takes a `RecolorOptions`. Caps the working resolution at `MaxRecolorDimension` (512²) so the 4096² cat eye atlas doesn't freeze the game. |
+| [src/core/RecolorOptions.cs](src/core/RecolorOptions.cs) | 130 | Value type: the full input to `TextureRecolor.GetOrBuild` (source + target + HSV knobs), built via `Fur(...)`/`Eye(...)` factories. Also the cache key — equality/hash delegate to the same 8-field tuple the cache used before (Target excluded). |
+| [src/game/CatColorPatch.cs](src/game/CatColorPatch.cs) | 489 | The equip-time Harmony patch **and** the apply logic: renderer traversal/dispatch, fur/whisker/eye/aura strategies, MaterialPropertyBlock writing, original-value caches. Still the largest engine file — see Structural debt for the remaining strategy seam. |
+| [src/core/ColorParsing.cs](src/core/ColorParsing.cs) | 42 | Hex/name → `Color?` parsing, shared by the fur/eye/aura paths. Extracted from `CatColorPatch`. |
+| [src/game/CatColorReapplier.cs](src/game/CatColorReapplier.cs) | 30 | Per-frame `Update()` safety net that re-applies fur (not eyes). One job. |
 
 ### Wardrobe UI (the "view")
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/CatFormWardrobe.cs](src/CatFormWardrobe.cs) | 177 | **Thin Harmony host** for 3 wardrobe-screen hooks (OnShow/HandleTabSelected/OnHide): ownership gate + tab injection, then wires the lifecycle to `CatPreviewController`, `WardrobePanelSwap`, and `PreviewColorSession`. Holds no rig/panel state. |
-| [src/CatPreviewController.cs](src/CatPreviewController.cs) | 206 | Owns the preview rig's cat body: instantiate/swap alongside the human body, mute in-preview VFX, suppress bloom, recolour. Extracted from `CatFormWardrobe`. |
-| [src/WardrobePanelSwap.cs](src/WardrobePanelSwap.cs) | 123 | Swaps the native category rows for our colour panel and back (hide/restore rows, build/destroy panel). Extracted from `CatFormWardrobe`. |
-| [src/CatFormColorPanel.cs](src/CatFormColorPanel.cs) | 492 | Builds the swatch panel: rows/presets, layout math, selection state, and the drawn-swatch fallback shell. Hosts a `SliderRow` for Fur Intensity. |
-| [src/SliderRow.cs](src/SliderRow.cs) | 149 | A labelled float slider widget (track/fill/handle), built for the Fur-Intensity row. Extracted from `CatFormColorPanel`. |
-| [src/PreviewColorSession.cs](src/PreviewColorSession.cs) | 86 | The try-on transaction: snapshot colours on open, revert on close-without-Confirm. Pure `ConfigEntry` state. Extracted from `CatFormWardrobe`. |
-| [src/CatFormSwatch.cs](src/CatFormSwatch.cs) | 210 | One swatch cloned from the game's `CustomizationOptionListWidget` (real frame/checkmark/hover sound). Template locate via `GameTemplate`. |
-| [src/ColorPickerPopup.cs](src/ColorPickerPopup.cs) | 303 | The RGB picker dialog (trimmed port of ModNook's `ColorPicker`). |
-| [src/Templates.cs](src/Templates.cs) | 246 | Game-widget cloning utility (stage inactive → strip localization/wings → place). Ported from ModNook; the locate step now delegates to `GameTemplate`. |
-| [src/GameTemplate.cs](src/GameTemplate.cs) | 110 | Shared widget-locate: enumerate all instances (incl. inactive/prefabs), prefer a scene-valid one, try/catch + log. One `Find<T>` with per-caller predicate/tie-break policy; used by `Templates`, `CatFormSwatch`, `HeaderDecoration`. |
+| [src/game/CatFormWardrobe.cs](src/game/CatFormWardrobe.cs) | 177 | **Thin Harmony host** for 3 wardrobe-screen hooks (OnShow/HandleTabSelected/OnHide): ownership gate + tab injection, then wires the lifecycle to `CatPreviewController`, `WardrobePanelSwap`, and `PreviewColorSession`. Holds no rig/panel state. |
+| [src/game/CatPreviewController.cs](src/game/CatPreviewController.cs) | 206 | Owns the preview rig's cat body: instantiate/swap alongside the human body, mute in-preview VFX, suppress bloom, recolour. Extracted from `CatFormWardrobe`. |
+| [src/game/WardrobePanelSwap.cs](src/game/WardrobePanelSwap.cs) | 123 | Swaps the native category rows for our colour panel and back (hide/restore rows, build/destroy panel). Extracted from `CatFormWardrobe`. |
+| [src/ui/CatFormColorPanel.cs](src/ui/CatFormColorPanel.cs) | 492 | Builds the swatch panel: rows/presets, layout math, selection state, and the drawn-swatch fallback shell. Hosts a `SliderRow` for Fur Intensity. |
+| [src/ui/SliderRow.cs](src/ui/SliderRow.cs) | 149 | A labelled float slider widget (track/fill/handle), built for the Fur-Intensity row. Extracted from `CatFormColorPanel`. |
+| [src/core/PreviewColorSession.cs](src/core/PreviewColorSession.cs) | 86 | The try-on transaction: snapshot colours on open, revert on close-without-Confirm. Pure `ConfigEntry` state. Extracted from `CatFormWardrobe`. |
+| [src/ui/CatFormSwatch.cs](src/ui/CatFormSwatch.cs) | 210 | One swatch cloned from the game's `CustomizationOptionListWidget` (real frame/checkmark/hover sound). Template locate via `GameTemplate`. |
+| [src/ui/ColorPickerPopup.cs](src/ui/ColorPickerPopup.cs) | 303 | The RGB picker dialog (trimmed port of ModNook's `ColorPicker`). |
+| [src/game/Templates.cs](src/game/Templates.cs) | 246 | Game-widget cloning utility (stage inactive → strip localization/wings → place). Ported from ModNook; the locate step now delegates to `GameTemplate`. |
+| [src/game/GameTemplate.cs](src/game/GameTemplate.cs) | 110 | Shared widget-locate: enumerate all instances (incl. inactive/prefabs), prefer a scene-valid one, try/catch + log. One `Find<T>` with per-caller predicate/tie-break policy; used by `Templates`, `CatFormSwatch`, `HeaderDecoration`. |
 
 ### Drawing / asset helpers (small, single-responsibility)
 | File | Lines | Responsibility |
 |---|---|---|
-| [src/PanelSprite.cs](src/PanelSprite.cs) | 132 | Generated 9-sliced plum/gold plate (+ plain white variant). Ported from ModNook. |
-| [src/GameFonts.cs](src/GameFonts.cs) | 123 | Locates the game's Gelica font + outline preset. Ported from LastSwing. |
-| [src/PawSprite.cs](src/PawSprite.cs) | 117 | Generated paw-print glyph for the tab icon. |
-| [src/HeaderDecoration.cs](src/HeaderDecoration.cs) | 113 | Clones the game's decorated category header. Template locate via `GameTemplate`. |
-| [src/PreviewBloomSuppressor.cs](src/PreviewBloomSuppressor.cs) | 74 | Adds/removes a global zero-bloom Volume while the tab is open. |
-| [src/TabIcon.cs](src/TabIcon.cs) | 70 | Loads a user PNG override, else falls back to `PawSprite`. |
-| [src/CircleSprite.cs](src/CircleSprite.cs) | 54 | Generated white circle sprite (swatch faces, slider handle). |
-| [src/ScrollForwarder.cs](src/ScrollForwarder.cs) | 32 | Forwards mouse-wheel from a swatch's EventTrigger up to the ScrollRect. |
-| [src/PointerTriggers.cs](src/PointerTriggers.cs) | 20 | Shared `EventTrigger` hover/click wiring helper (was duplicated in the panel + swatch). |
-| [src/Palette.cs](src/Palette.cs) | 13 | Two UI colours (label, accent) the mod draws itself. UI-only. |
+| [src/ui/PanelSprite.cs](src/ui/PanelSprite.cs) | 132 | Generated 9-sliced plum/gold plate (+ plain white variant). Ported from ModNook. |
+| [src/game/GameFonts.cs](src/game/GameFonts.cs) | 123 | Locates the game's Gelica font + outline preset. Ported from LastSwing. |
+| [src/ui/PawSprite.cs](src/ui/PawSprite.cs) | 117 | Generated paw-print glyph for the tab icon. |
+| [src/ui/HeaderDecoration.cs](src/ui/HeaderDecoration.cs) | 113 | Clones the game's decorated category header. Template locate via `GameTemplate`. |
+| [src/game/PreviewBloomSuppressor.cs](src/game/PreviewBloomSuppressor.cs) | 74 | Adds/removes a global zero-bloom Volume while the tab is open. |
+| [src/ui/TabIcon.cs](src/ui/TabIcon.cs) | 70 | Loads a user PNG override, else falls back to `PawSprite`. |
+| [src/ui/CircleSprite.cs](src/ui/CircleSprite.cs) | 54 | Generated white circle sprite (swatch faces, slider handle). |
+| [src/ui/ScrollForwarder.cs](src/ui/ScrollForwarder.cs) | 32 | Forwards mouse-wheel from a swatch's EventTrigger up to the ScrollRect. |
+| [src/ui/PointerTriggers.cs](src/ui/PointerTriggers.cs) | 20 | Shared `EventTrigger` hover/click wiring helper (was duplicated in the panel + swatch). |
+| [src/ui/Palette.cs](src/ui/Palette.cs) | 13 | Two UI colours (label, accent) the mod draws itself. UI-only. |
 
 ## Structural debt
 
@@ -166,7 +222,8 @@ The review distinguished two risk classes, which drives what got fixed now vs ba
 
 ## Conventions (this repo)
 
-- Plugin `.cs` flat in `src/` (no `src/PurrtasticPalette/`); docs + `pack.ps1` at the mod root.
+- Plugin `.cs` live under `src/game/`, `src/ui/`, `src/core/` (see [Layout](#layout)); only `Plugin.cs`
+  stays at `src/` root beside the `.csproj`. Docs + `pack.ps1` at the mod root.
 - Version is single-sourced from `src/PurrtasticPalette.csproj` `<Version>` via `GenerateModBuildInfo`
   in [Directory.Build.props](Directory.Build.props) → `ModBuildInfo.Version`. Never hardcode it.
 - `pack.ps1` and `Directory.Build.props` are **workspace-synced canonicals** (generated by

@@ -15,7 +15,11 @@ BepInEx 5 / HarmonyX plugin for the Unity Mono game *Moonlight Peaks* (netstanda
 Cat Form from config and from a wardrobe tab. Published: Nexus mod 142.
 
 ## Conventions
-- **Layout:** plugin `.cs` flat in `src/` (no `src/PurrtasticPalette/`); docs + `pack.ps1` at the root.
+- **Layout:** plugin `.cs` are foldered by responsibility — `src/game/` (Harmony patches +
+  live-game bridges), `src/ui/` (panels, widgets, sprites, dialogs), `src/core/` (the mod's own
+  logic/state). Only `Plugin.cs` stays at `src/` root beside the `.csproj`; docs + `pack.ps1` at
+  the repo root. The homes are declared in [STRUCTURE.md](STRUCTURE.md#layout) under `## Layout` and
+  a placement hook enforces them — declare a new folder there before putting code in it.
 - **Version:** single-sourced from `src/PurrtasticPalette.csproj` `<Version>` via `GenerateModBuildInfo`
   (`Directory.Build.props`) → `ModBuildInfo.Version`. Never hardcode a version in `Plugin.cs`. Bump
   only when publishing.
