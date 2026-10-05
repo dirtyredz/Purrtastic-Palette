@@ -48,3 +48,4 @@ that aren't in the README are here.
 - **`pack.ps1` and `Directory.Build.props` are workspace-synced canonicals** — edit them via
   `../../tools/sync-mod-files.ps1`, never by hand here, or the next sync reverts you.
 - **Never hardcode the version** — it flows from the csproj `<Version>` through `ModBuildInfo.Version`.
+- None open. Keyboard/gamepad nav in the wardrobe panel is intentionally unsupported (mouse only).
